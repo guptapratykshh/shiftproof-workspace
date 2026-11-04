@@ -1,0 +1,41 @@
+{
+  "name": "shiftproof",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build && node scripts/finalize-build.mjs",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "playwright test",
+    "dev:full": "node scripts/dev.mjs",
+    "test:workspace": "playwright test --config playwright.workspace.config.ts"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.2.5",
+    "@fontsource/noto-sans-devanagari": "^5.2.5",
+    "@hookform/resolvers": "^5.2.2",
+    "@tanstack/react-query": "^5.105.1",
+    "idb": "^8.0.4",
+    "lucide-react": "^0.468.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-hook-form": "^7.65.0",
+    "react-router-dom": "^7.9.5",
+    "recharts": "^3.10.1",
+    "zod": "^4.1.12",
+    "zustand": "^5.0.16"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@tailwindcss/vite": "^4.1.16",
+    "@types/node": "^22.18.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.1.0",
+    "prettier": "^3.9.10",
+    "tailwindcss": "^4.1.16",
+    "typescript": "~5.9.3",
+    "vite": "^7.1.12"
+  }
+}
