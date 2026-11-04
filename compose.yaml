@@ -1,0 +1,67 @@
+name: shiftproof
+x-api: &api
+  image: shiftproof-api:local
+  build: ./backend
+  env_file:
+    - path: .env
+      required: false
+  environment: &environment
+    APP_ENV: ${APP_ENV:-development}
+    DATABASE_URL: postgresql+psycopg://shiftproof:${POSTGRES_PASSWORD:-local-development-only}@database:5432/shiftproof
+    FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+    ALLOWED_ORIGINS: '${ALLOWED_ORIGINS:-["http://localhost:8080","http://127.0.0.1:8080"]}'
+    COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    MAIL_MODE: smtp
+    SMTP_HOST: ${SMTP_HOST:-mailpit}
+    SMTP_PORT: ${SMTP_PORT:-1025}
+    STORAGE_DIRECTORY: /app/data/evidence
+  volumes: [evidence:/app/data/evidence]
+  restart: unless-stopped
+  init: true
+services:
+  database:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: shiftproof
+      POSTGRES_USER: shiftproof
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
+    volumes: [database:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U shiftproof -d shiftproof]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  migrate:
+    <<: *api
+    command: [alembic, upgrade, head]
+    restart: "no"
+    depends_on:
+      database: {condition: service_healthy}
+  api:
+    <<: *api
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health',timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+  worker:
+    <<: *api
+    command: [python, -m, app.worker]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+  web:
+    build: .
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports: ["127.0.0.1:8025:8025"]
+    restart: unless-stopped
+volumes:
+  database:
+  evidence:
