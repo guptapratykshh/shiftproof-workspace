@@ -338,14 +338,21 @@ export function Workspace() {
   }, [session?.user.id]);
   useEffect(() => {
     if (!session || !API_BASE || !online) return;
-    const stream = new EventSource(`${API_BASE}/events`, {
-      withCredentials: true,
-    });
     const refresh = () => {
       void client.invalidateQueries({
         predicate: (query) => query.queryKey[0] !== "session",
       });
     };
+    // Temporary public tunnels may buffer SSE; keep their workspaces current.
+    if (import.meta.env.VITE_LIVE_UPDATES === "poll") {
+      const timer = window.setInterval(() => {
+        if (document.visibilityState === "visible") refresh();
+      }, 5_000);
+      return () => window.clearInterval(timer);
+    }
+    const stream = new EventSource(`${API_BASE}/events`, {
+      withCredentials: true,
+    });
     stream.addEventListener("update", refresh);
     stream.addEventListener("expired", () =>
       window.dispatchEvent(new Event("shiftproof-session-ended")),
