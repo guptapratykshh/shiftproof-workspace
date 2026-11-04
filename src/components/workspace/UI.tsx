@@ -1,0 +1,653 @@
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AlertCircle, CheckCircle2, LoaderCircle, X } from "lucide-react";
+import { usePreferences } from "../../lib/preferences";
+
+const words: Record<string, string> = {
+  "Alerts & escalation": "अलर्ट और एस्केलेशन",
+  "Availability history": "उपलब्धता का इतिहास",
+  Dependencies: "निर्भर कार्य",
+  "Final review": "अंतिम समीक्षा",
+  "Organization profile": "संगठन की प्रोफ़ाइल",
+  "Privacy & recording": "गोपनीयता और रिकॉर्डिंग",
+  "Responsibility history": "जिम्मेदारी का इतिहास",
+  "Responsibility mapping": "जिम्मेदारियों का मानचित्र",
+  "Security & reminders": "सुरक्षा और अनुस्मारक",
+  "Shift assignments": "शिफ्ट की जिम्मेदारियाँ",
+  "Temporary administrative takeover": "प्रशासक की अस्थायी संचालन अनुमति",
+  reviewed: "समीक्षा दर्ज",
+  "Related reports": "जुड़ी रिपोर्ट",
+  Home: "होम",
+  "My tasks": "मेरे कार्य",
+  Report: "रिपोर्ट करें",
+  Profile: "प्रोफ़ाइल",
+  Overview: "अवलोकन",
+  Tasks: "कार्य",
+  Reports: "रिपोर्ट",
+  Workforce: "कर्मचारी",
+  Handovers: "हैंडओवर",
+  Alerts: "अलर्ट",
+  Conflicts: "विरोधाभास",
+  Notifications: "सूचनाएँ",
+  Settings: "सेटिंग",
+  Analytics: "विश्लेषण",
+  Departments: "विभाग",
+  Teams: "टीम",
+  Shifts: "शिफ्ट",
+  Supervisors: "पर्यवेक्षक",
+  Policies: "नीतियाँ",
+  "Audit history": "ऑडिट इतिहास",
+  "No saved records available offline":
+    "ऑफ़लाइन कोई सहेजे गए रिकॉर्ड उपलब्ध नहीं हैं",
+  "Follow-ups": "अनुवर्ती कार्य",
+  "Sign out": "साइन आउट",
+  "Save changes": "बदलाव सहेजें",
+  Save: "सहेजें",
+  Cancel: "रद्द करें",
+  Continue: "जारी रखें",
+  Close: "बंद करें",
+  Create: "बनाएँ",
+  Name: "नाम",
+  Description: "विवरण",
+  Department: "विभाग",
+  Team: "टीम",
+  Shift: "शिफ्ट",
+  Status: "स्थिति",
+  Priority: "प्राथमिकता",
+  Worker: "कर्मचारी",
+  Supervisor: "पर्यवेक्षक",
+  Email: "ईमेल",
+  "Contact number": "संपर्क नंबर",
+  "Full name": "पूरा नाम",
+  "Employee ID": "कर्मचारी आईडी",
+  "Primary department": "मुख्य विभाग",
+  "Additional departments": "अतिरिक्त विभाग",
+  "Required skills": "आवश्यक योग्यताएँ",
+  Skills: "योग्यताएँ",
+  Deadline: "समय सीमा",
+  Title: "शीर्षक",
+  Instructions: "निर्देश",
+  "Assignment type": "जिम्मेदारी का प्रकार",
+  Individual: "व्यक्तिगत",
+  "Shared team task": "टीम का साझा कार्य",
+  "Team lead": "टीम प्रमुख",
+  "Review required": "समीक्षा आवश्यक",
+  Critical: "गंभीर",
+  Reason: "कारण",
+  Note: "टिप्पणी",
+  "Internal note": "आंतरिक टिप्पणी",
+  "Start time": "शुरू होने का समय",
+  "End time": "समाप्ति का समय",
+  "Working days": "कार्य दिवस",
+  "Grace minutes": "अतिरिक्त मिनट",
+  "Start date": "शुरुआत की तारीख",
+  "End date": "समाप्ति की तारीख",
+  "Shift date": "शिफ्ट की तारीख",
+  "Incoming shift": "आने वाली शिफ्ट",
+  Notes: "टिप्पणियाँ",
+  "What changed?": "क्या बदला?",
+  Category: "श्रेणी",
+  "Work area": "कार्य क्षेत्र",
+  "Machine / equipment": "मशीन / उपकरण",
+  "Batch / order": "बैच / ऑर्डर",
+  Quantity: "मात्रा",
+  Unit: "इकाई",
+  "Operational status": "कार्य स्थिति",
+  "Action already taken": "की गई कार्रवाई",
+  "Safety implication": "सुरक्षा संबंधी जानकारी",
+  "Quality implication": "गुणवत्ता संबंधी जानकारी",
+  "Related task": "संबंधित कार्य",
+  Optional: "वैकल्पिक",
+  All: "सभी",
+  None: "कोई नहीं",
+  Active: "सक्रिय",
+  Inactive: "निष्क्रिय",
+  Pending: "लंबित",
+  Completed: "पूरा",
+  Skipped: "छोड़ा गया",
+  assigned: "सौंपा गया",
+  accepted: "स्वीकार किया",
+  in_progress: "प्रगति पर",
+  blocked: "रुका हुआ",
+  completed: "पूरा",
+  verified: "सत्यापित",
+  closed: "बंद",
+  submitted: "जमा किया",
+  resolved: "समाधान हुआ",
+  new: "नया",
+  acknowledged: "प्राप्ति स्वीकार",
+  draft: "ड्राफ्ट",
+  published: "प्रकाशित",
+  provisional: "समीक्षा लंबित",
+  open: "खुला",
+  requested: "अनुरोध किया",
+  normal: "सामान्य",
+  important: "महत्वपूर्ण",
+  urgent: "तत्काल",
+  critical: "गंभीर",
+  general: "सामान्य",
+  progress: "प्रगति",
+  safety: "सुरक्षा",
+  quality: "गुणवत्ता",
+  equipment: "उपकरण",
+  maintenance: "रखरखाव",
+  materials: "सामग्री",
+  "No records yet": "अभी कोई रिकॉर्ड नहीं",
+  "Loading…": "लोड हो रहा है…",
+  "Try again": "फिर प्रयास करें",
+  "Saving…": "सहेज रहे हैं…",
+  "Saved successfully.": "सफलतापूर्वक सहेजा गया।",
+  "View details": "विवरण देखें",
+  "Search by name": "नाम से खोजें",
+  "Pending review": "समीक्षा लंबित",
+  "Saved locally": "डिवाइस पर सहेजा गया",
+  "Pending sync": "सिंक लंबित",
+  Syncing: "सिंक हो रहा है",
+  Submitted: "जमा किया",
+  "Sync failed": "सिंक विफल",
+  Draft: "ड्राफ्ट",
+  "Recording consent": "रिकॉर्डिंग की सहमति",
+  "Create task": "कार्य बनाएँ",
+  "Add worker": "कर्मचारी जोड़ें",
+  "Invite supervisor": "पर्यवेक्षक आमंत्रित करें",
+  "New report": "नई रिपोर्ट",
+  "Create handover": "हैंडओवर बनाएँ",
+  Permissions: "अनुमतियाँ",
+  Primary: "मुख्य",
+  Backup: "बैकअप",
+  "Select an option": "एक विकल्प चुनें",
+  "No priority flag": "कोई प्राथमिकता चिह्न नहीं",
+  "Organization ID": "संगठन आईडी",
+  "Official email": "आधिकारिक ईमेल",
+  "Organization name": "संगठन का नाम",
+  "Organization type": "संगठन का प्रकार",
+  Timezone: "समय क्षेत्र",
+  Address: "पता",
+  "Receiving department": "प्राप्त करने वाला विभाग",
+  "Purpose of access": "पहुँच का उद्देश्य",
+  "Identity verified": "पहचान सत्यापित",
+  "Verification note": "पहचान जाँच का विवरण",
+  Hours: "घंटे",
+  Password: "पासवर्ड",
+  PIN: "पिन",
+  "Confirm password": "पासवर्ड की पुष्टि",
+  "Confirm PIN": "पिन की पुष्टि",
+  "Current password or PIN": "वर्तमान पासवर्ड या पिन",
+  "New password or PIN": "नया पासवर्ड या पिन",
+  Confirm: "पुष्टि करें",
+  Response: "उत्तर",
+  "Response type": "उत्तर का प्रकार",
+  Resolution: "समाधान",
+  "Corrective task": "सुधारात्मक कार्य",
+  "Recurrence in minutes": "दोहराव का अंतराल मिनट में",
+  "First run": "पहली बार",
+  "Choose file": "फ़ाइल चुनें",
+  "Upload preview": "अपलोड की जाँच",
+  "Confirm valid rows": "सही पंक्तियों की पुष्टि",
+  "Download template": "टेम्पलेट डाउनलोड",
+  "View calendar": "कैलेंडर देखें",
+  "View list": "सूची देखें",
+  Accept: "स्वीकार करें",
+  Start: "शुरू करें",
+  Block: "रोकें",
+  Resume: "फिर शुरू करें",
+  Complete: "पूरा करें",
+  Verify: "सत्यापित करें",
+  Reject: "अस्वीकार करें",
+  Reassign: "फिर सौंपें",
+  "View source": "मूल रिकॉर्ड देखें",
+  History: "इतिहास",
+  Evidence: "साक्ष्य",
+  Comments: "टिप्पणियाँ",
+  "Add comment": "टिप्पणी जोड़ें",
+  "Publish version": "संस्करण प्रकाशित करें",
+  Acknowledge: "प्राप्ति स्वीकारें",
+  "Acknowledge this item": "इस विषय की प्राप्ति स्वीकारें",
+  "Mark as read": "पढ़ा गया",
+  "Retry sync": "सिंक फिर करें",
+  "Local drafts": "स्थानीय ड्राफ्ट",
+  "Record an update": "अपडेट रिकॉर्ड करें",
+  "Submit report": "रिपोर्ट जमा करें",
+  "Save draft": "ड्राफ्ट सहेजें",
+  "Review report": "रिपोर्ट की समीक्षा",
+  "Request clarification": "स्पष्टीकरण माँगें",
+  Escalate: "आगे भेजें",
+  "Resolve issue": "समस्या सुलझाएँ",
+  "Correct report": "रिपोर्ट सुधारें",
+  "Confirm receipt": "प्राप्ति की पुष्टि",
+  Processing: "प्रक्रिया जारी",
+  "Speech language": "बोलने की भाषा",
+  "Read report": "रिपोर्ट पढ़ें",
+  "Review required before closure": "बंद करने से पहले समीक्षा आवश्यक",
+  Onboarding: "प्रारंभिक सेटअप",
+  "Next page": "अगला पेज",
+  "Previous page": "पिछला पेज",
+  Available: "उपलब्ध",
+  Absent: "अनुपस्थित",
+  Leave: "अवकाश",
+  Unavailable: "अनुपलब्ध",
+  "Approaching deadline": "समय सीमा निकट",
+  Overdue: "समय सीमा बीत गई",
+  "Verification required": "सत्यापन आवश्यक",
+  "Invite administrator": "प्रशासक आमंत्रित करें",
+  "Organization administrator": "संगठन प्रशासक",
+  Member: "सदस्य",
+  Deactivate: "निष्क्रिय करें",
+  Reactivate: "फिर सक्रिय करें",
+  "Reset PIN": "पिन रीसेट",
+  "Mark availability": "उपलब्धता दर्ज करें",
+  "Assign shift": "शिफ्ट सौंपें",
+  "Import workers": "कर्मचारी आयात करें",
+  "Resend invitation": "आमंत्रण फिर भेजें",
+  "Update permissions": "अनुमतियाँ बदलें",
+  "Save & continue": "सहेजें और जारी रखें",
+  "Save & exit": "सहेजें और बाहर निकलें",
+  "Skip optional step": "वैकल्पिक चरण छोड़ें",
+  "Activate organization": "संगठन सक्रिय करें",
+  "Refresh status": "स्थिति ताज़ा करें",
+};
+export function useWords() {
+  const { language } = usePreferences();
+  return (value: string) =>
+    language === "hi"
+      ? words[value] || value.replaceAll("_", " ")
+      : value.replaceAll("_", " ");
+}
+export function Status({ value }: { value: string }) {
+  const w = useWords();
+  return (
+    <span
+      className={`work-status status-${value.toLowerCase().replaceAll(" ", "-")}`}
+    >
+      {w(value)}
+    </span>
+  );
+}
+export function Empty({
+  title = "No records yet",
+  children,
+}: {
+  title?: string;
+  children?: ReactNode;
+}) {
+  const w = useWords();
+  return (
+    <div className="work-empty">
+      <CheckCircle2 size={26} />
+      <h3>
+        {!navigator.onLine ? w("No saved records available offline") : w(title)}
+      </h3>
+      {children && <p>{children}</p>}
+    </div>
+  );
+}
+export function Loading() {
+  const w = useWords();
+  return (
+    <div className="work-loading" role="status">
+      <LoaderCircle className="spin" size={22} />
+      {w("Loading…")}
+    </div>
+  );
+}
+export function ErrorNotice({
+  error,
+  retry,
+}: {
+  error: unknown;
+  retry?: () => void;
+}) {
+  const w = useWords();
+  return (
+    <div className="form-alert" role="alert">
+      <AlertCircle size={19} />
+      <div>
+        <p>{error instanceof Error ? error.message : String(error)}</p>
+        {retry && (
+          <button className="text-button" onClick={retry}>
+            {w("Try again")}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+export function PageTitle({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children?: ReactNode;
+}) {
+  const w = useWords();
+  return (
+    <div className="work-page-title">
+      <div>
+        <p className="eyebrow">SHIFTPROOF / {w(title)}</p>
+        <h1>{w(title)}</h1>
+        {description && <p>{description}</p>}
+      </div>
+      {children && <div className="work-actions">{children}</div>}
+    </div>
+  );
+}
+export function Panel({
+  title,
+  children,
+  action,
+}: {
+  title?: string;
+  children: ReactNode;
+  action?: ReactNode;
+}) {
+  const w = useWords();
+  return (
+    <section className="work-panel">
+      {title && (
+        <div className="panel-heading">
+          <h2>{w(title)}</h2>
+          {action}
+        </div>
+      )}
+      {children}
+    </section>
+  );
+}
+export function Modal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const heading = useId();
+  const w = useWords();
+  useEffect(() => {
+    ref.current?.showModal();
+    const previous = document.activeElement as HTMLElement;
+    return () => previous?.focus();
+  }, []);
+  return (
+    <dialog
+      className="work-modal"
+      ref={ref}
+      aria-labelledby={heading}
+      onCancel={onClose}
+    >
+      <div className="modal-heading">
+        <h2 id={heading}>{w(title)}</h2>
+        <button
+          className="icon-button"
+          aria-label={w("Close")}
+          onClick={onClose}
+        >
+          <X size={21} />
+        </button>
+      </div>
+      {children}
+    </dialog>
+  );
+}
+export type Option = { value: string; label: string };
+export type FieldSpec = {
+  name: string;
+  label: string;
+  type?:
+    | "text"
+    | "email"
+    | "password"
+    | "number"
+    | "date"
+    | "datetime-local"
+    | "time"
+    | "textarea"
+    | "select"
+    | "multi"
+    | "checkbox";
+  required?: boolean;
+  options?: Option[];
+  defaultValue?: string | number | boolean | string[];
+  hint?: string;
+  min?: number;
+  max?: number;
+  wide?: boolean;
+};
+export type FormValues = Record<string, string | string[] | boolean>;
+export function FieldsForm({
+  fields,
+  submitLabel = "Save changes",
+  onSubmit,
+  onSuccess,
+  children,
+}: {
+  fields: FieldSpec[];
+  submitLabel?: string;
+  onSubmit: (values: FormValues) => Promise<unknown>;
+  onSuccess?: (result: unknown) => void;
+  children?: ReactNode;
+}) {
+  const w = useWords();
+  const id = useId();
+  const queryClient = useQueryClient();
+  const [saved, setSaved] = useState(false);
+  const mutation = useMutation({
+    mutationFn: onSubmit,
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries();
+      setSaved(true);
+      onSuccess?.(result);
+    },
+  });
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaved(false);
+    const data = new FormData(event.currentTarget);
+    const values: FormValues = {};
+    fields.forEach((field) => {
+      values[field.name] =
+        field.type === "checkbox"
+          ? data.has(field.name)
+          : field.type === "multi"
+            ? data.getAll(field.name).map(String)
+            : String(data.get(field.name) || "");
+    });
+    mutation.mutate(values);
+  };
+  return (
+    <form className="work-form" onSubmit={submit}>
+      <div className="work-form-grid">
+        {fields.map((field) => {
+          const props = {
+            name: field.name,
+            id: `${id}-${field.name}`,
+            required: field.required,
+            "aria-describedby": field.hint
+              ? `${id}-${field.name}-hint`
+              : undefined,
+          };
+          return (
+            <div
+              className={`form-field ${field.wide || field.type === "textarea" || field.type === "multi" ? "field-wide" : ""}`}
+              key={field.name}
+            >
+              {field.type === "checkbox" ? (
+                <label className="check-field">
+                  <input
+                    {...props}
+                    type="checkbox"
+                    defaultChecked={Boolean(field.defaultValue)}
+                  />
+                  {w(field.label)}
+                </label>
+              ) : (
+                <>
+                  <label htmlFor={props.id}>
+                    {w(field.label)}
+                    {field.required && <span aria-hidden="true"> *</span>}
+                  </label>
+                  {field.type === "select" || field.type === "multi" ? (
+                    <select
+                      {...props}
+                      multiple={field.type === "multi"}
+                      defaultValue={
+                        (field.defaultValue as string | string[]) ||
+                        (field.type === "multi" ? [] : "")
+                      }
+                    >
+                      {field.type === "select" && (
+                        <option value="">
+                          {w(field.required ? "Select an option" : "None")}
+                        </option>
+                      )}
+                      {field.options?.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {w(option.label)}
+                        </option>
+                      ))}
+                    </select>
+                  ) : field.type === "textarea" ? (
+                    <textarea
+                      {...props}
+                      rows={4}
+                      defaultValue={String(field.defaultValue || "")}
+                      maxLength={10000}
+                    />
+                  ) : (
+                    <input
+                      {...props}
+                      type={field.type || "text"}
+                      defaultValue={String(field.defaultValue ?? "")}
+                      min={field.min}
+                      max={field.max}
+                    />
+                  )}
+                </>
+              )}
+              {field.hint && (
+                <p className="field-hint" id={`${id}-${field.name}-hint`}>
+                  {field.hint}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {children}
+      {mutation.error && <ErrorNotice error={mutation.error} />}
+      {saved && !onSuccess && (
+        <p className="work-success" role="status">
+          {w("Saved successfully.")}
+        </p>
+      )}
+      <button
+        type="submit"
+        className="button button-primary"
+        disabled={mutation.isPending}
+      >
+        {mutation.isPending && <LoaderCircle size={17} className="spin" />}
+        {w(mutation.isPending ? "Saving…" : submitLabel)}
+      </button>
+    </form>
+  );
+}
+export function ActionButton({
+  children,
+  action,
+  className = "button button-outline",
+}: {
+  children: ReactNode;
+  action: () => Promise<unknown>;
+  className?: string;
+}) {
+  const client = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: action,
+    onSuccess: () => {
+      void client.invalidateQueries();
+    },
+  });
+  return (
+    <div className="inline-action">
+      <button
+        className={className}
+        disabled={mutation.isPending}
+        onClick={() => mutation.mutate()}
+      >
+        {mutation.isPending && <LoaderCircle size={16} className="spin" />}
+        {children}
+      </button>
+      {mutation.error && <ErrorNotice error={mutation.error} />}
+    </div>
+  );
+}
+export function When({
+  loading,
+  error,
+  children,
+}: {
+  loading?: boolean;
+  error?: unknown;
+  children: ReactNode;
+}) {
+  const client = useQueryClient();
+  return loading ? (
+    <Loading />
+  ) : error ? (
+    <>
+      <ErrorNotice
+        error={error}
+        retry={() => {
+          void client.invalidateQueries();
+        }}
+      />
+      {!navigator.onLine && children}
+    </>
+  ) : (
+    <>{children}</>
+  );
+}
+export function formatDate(
+  value: string | null | undefined,
+  timezone = "Asia/Kolkata",
+  withTime = true,
+) {
+  return value
+    ? new Intl.DateTimeFormat(document.documentElement.lang, {
+        dateStyle: "medium",
+        ...(withTime ? { timeStyle: "short" as const } : {}),
+        timeZone: timezone,
+      }).format(new Date(value))
+    : "—";
+}
+export const options = (
+  items?: { id: string; name?: string; title?: string }[],
+): Option[] =>
+  (items || []).map((item) => ({
+    value: item.id,
+    label: item.name || item.title || item.id,
+  }));
+export const str = (value: string | string[] | boolean | undefined) =>
+  typeof value === "string" ? value : "";
+export const list = (value: string | string[] | boolean | undefined) =>
+  Array.isArray(value) ? value : [];
+export const commaList = (value: string | string[] | boolean | undefined) =>
+  str(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+export const nullable = (value: string | string[] | boolean | undefined) =>
+  str(value) || null;
+export const iso = (value: string | string[] | boolean | undefined) =>
+  str(value) ? new Date(str(value)).toISOString() : null;
