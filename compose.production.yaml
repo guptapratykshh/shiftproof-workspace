@@ -1,0 +1,38 @@
+# docker compose -f compose.yaml -f compose.production.yaml up -d --build
+# Requires a DNS name pointing at the host, TLS ports 80/443 and production .env.
+x-production: &production
+  APP_ENV: production
+  COOKIE_SECURE: "true"
+  FRONTEND_URL: https://${SITE_DOMAIN:?Set the public DNS name}
+  ALLOWED_ORIGINS: '["https://${SITE_DOMAIN:?Set the public DNS name}"]'
+  SMTP_HOST: ${SMTP_HOST:?Set the production SMTP host}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+services:
+  api:
+    environment: *production
+  worker:
+    environment: *production
+  migrate:
+    environment: *production
+  database:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a strong database password}
+  mailpit:
+    profiles: [development-mail]
+  web:
+    ports: !reset []
+  tls:
+    image: caddy:2-alpine
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?Set the public DNS name}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - tls_data:/data
+      - tls_config:/config
+    depends_on: [web]
+    restart: unless-stopped
+volumes:
+  tls_data:
+  tls_config:
