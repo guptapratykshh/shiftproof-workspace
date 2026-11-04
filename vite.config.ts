@@ -5,6 +5,22 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    fs: {
+      // A forwarded development server must never serve backend or runtime files.
+      deny: [
+        "**/.env",
+        "**/.env.*",
+        "**/*.{crt,pem}",
+        "**/.git/**",
+        "**/backend/**",
+        "**/.sites-*/**",
+        "**/data/**",
+        "**/backups/**",
+        "**/test-results/**",
+        "**/playwright-report/**",
+        "**/*.{db,db-shm,db-wal,sqlite,sqlite3,dump,eml,log}",
+      ],
+    },
     proxy: {
       "/api": process.env.SHIFTPROOF_API_TARGET || "http://127.0.0.1:8000",
     },
