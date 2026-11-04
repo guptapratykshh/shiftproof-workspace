@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.env*
+backend
+test-results
+playwright-report
+data
+docs
+.sites-*
+
+artifacts
+backups
+*.dump
+*.eml
