@@ -38,13 +38,13 @@ router = APIRouter(tags=["Organization"])
 
 
 @router.get("/organization")
-def organization(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def organization(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     return record_dict(db.get(Organization, user.organization_id))
 
 
 @router.put("/organization")
 def update_organization(
-    values: OrganizationInput, user: User = Depends(current_user), db: Session = Depends(get_db)
+    values: OrganizationInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     admin(user)
     org = db.get(Organization, user.organization_id)
@@ -72,7 +72,7 @@ def update_organization(
 
 
 @router.get("/organization/onboarding")
-def onboarding(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def onboarding(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     admin(user)
     return service.onboarding_status(db, db.get(Organization, user.organization_id))
 
@@ -83,7 +83,7 @@ class OnboardingStep(Input):
 
 
 @router.post("/organization/onboarding")
-def save_step(values: OnboardingStep, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def save_step(values: OnboardingStep, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     admin(user)
     org = db.get(Organization, user.organization_id)
     if values.skip and values.step <= 5:
@@ -97,7 +97,7 @@ def save_step(values: OnboardingStep, user: User = Depends(current_user), db: Se
 
 
 @router.post("/organization/activate")
-def activate_organization(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def activate_organization(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     admin(user)
     org = db.get(Organization, user.organization_id)
     if not service.onboarding_status(db, org)["can_activate"]:
@@ -111,7 +111,7 @@ def activate_organization(user: User = Depends(current_user), db: Session = Depe
 
 
 @router.get("/departments")
-def departments(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def departments(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     return [
         record_dict(item)
         for item in db.scalars(
@@ -143,7 +143,7 @@ def unique_name(db, model, values, user, record_id=None):
 
 @router.post("/departments", status_code=201)
 def create_department(
-    values: DepartmentInput, user: User = Depends(current_user), db: Session = Depends(get_db)
+    values: DepartmentInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     admin(user)
     unique_name(db, Department, values, user)
@@ -158,7 +158,7 @@ def create_department(
 
 @router.put("/departments/{record_id}")
 def update_department(
-    record_id: str, values: DepartmentInput, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: DepartmentInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     admin(user)
     item = scoped(db, Department, record_id, user)
@@ -173,7 +173,7 @@ def update_department(
 
 
 @router.get("/teams")
-def teams(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def teams(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     return [
         record_dict(item)
         for item in db.scalars(
@@ -187,7 +187,7 @@ def teams(user: User = Depends(current_user), db: Session = Depends(get_db)):
 
 
 @router.post("/teams", status_code=201)
-def create_team(values: TeamInput, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def create_team(values: TeamInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     admin(user)
     parent = scoped(db, Department, values.department_id, user)
     if not parent.active:
@@ -202,7 +202,7 @@ def create_team(values: TeamInput, user: User = Depends(current_user), db: Sessi
 
 @router.put("/teams/{record_id}")
 def update_team(
-    record_id: str, values: TeamInput, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: TeamInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     admin(user)
     item = scoped(db, Team, record_id, user)
@@ -217,7 +217,7 @@ def update_team(
 
 
 @router.get("/shifts")
-def shifts(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def shifts(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     return [
         record_dict(item)
         for item in db.scalars(
@@ -248,7 +248,7 @@ def shift_warnings(db: Session, item: Shift):
 
 
 @router.post("/shifts", status_code=201)
-def create_shift(values: ShiftInput, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def create_shift(values: ShiftInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     admin(user)
     item = Shift(organization_id=user.organization_id, **values.model_dump())
     db.add(item)
@@ -259,7 +259,7 @@ def create_shift(values: ShiftInput, user: User = Depends(current_user), db: Ses
 
 @router.put("/shifts/{record_id}")
 def update_shift(
-    record_id: str, values: ShiftInput, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: ShiftInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     admin(user)
     item = scoped(db, Shift, record_id, user)
@@ -271,7 +271,7 @@ def update_shift(
 
 
 @router.get("/supervisors")
-def supervisors(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def supervisors(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     if user.role == "worker":
         fail(403, "Supervisor directory access is not available to workers.")
     query = select(User).where(
@@ -298,12 +298,12 @@ def supervisors(user: User = Depends(current_user), db: Session = Depends(get_db
 
 
 @router.post("/supervisors/invite", status_code=201)
-def invite(values: InviteInput, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def invite(values: InviteInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     return service.invite(db, user, values)
 
 
 @router.post("/supervisors/{record_id}/resend")
-def resend_invitation(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def resend_invitation(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     from ..services.authentication import issue_invitation
 
     admin(user)
@@ -324,7 +324,7 @@ def permissions(
     record_id: str,
     values: SupervisorPermissions,
     user: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     supervisor = scoped(db, User, record_id, user)
     service.replace_supervisor_memberships(db, user, supervisor, values.departments)
@@ -333,7 +333,7 @@ def permissions(
 
 @router.put("/users/{record_id}/state")
 def account_state(
-    record_id: str, values: StateInput, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: StateInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     return service.change_account_state(
         db, user, scoped(db, User, record_id, user), values.active, values.reason
@@ -347,7 +347,7 @@ class TakeoverInput(Input):
 
 
 @router.get("/takeovers")
-def takeovers(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def takeovers(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     admin(user)
     return [
         record_dict(item)
@@ -362,7 +362,7 @@ def takeovers(user: User = Depends(current_user), db: Session = Depends(get_db))
 
 
 @router.post("/takeovers", status_code=201)
-def start_takeover(values: TakeoverInput, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def start_takeover(values: TakeoverInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     admin(user)
     scoped(db, Department, values.department_id, user)
     item = Takeover(
@@ -388,7 +388,7 @@ def start_takeover(values: TakeoverInput, user: User = Depends(current_user), db
 
 
 @router.delete("/takeovers/{record_id}")
-def end_takeover(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def end_takeover(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     admin(user)
     item = scoped(db, Takeover, record_id, user)
     item.revoked_at = now()
@@ -417,7 +417,7 @@ DEFAULT_POLICIES = {
 
 
 @router.get("/policies")
-def policies(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def policies(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     stored = {
         p.key: p.value
         for p in db.scalars(
@@ -434,7 +434,7 @@ class PolicyInput(Input):
 
 @router.put("/policies/{key}")
 def update_policy(
-    key: str, values: PolicyInput, user: User = Depends(current_user), db: Session = Depends(get_db)
+    key: str, values: PolicyInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     admin(user)
     defaults = DEFAULT_POLICIES.get(key)
@@ -477,7 +477,7 @@ class MappingInput(Input):
 
 
 @router.get("/responsibilities")
-def responsibilities(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def responsibilities(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     return [
         record_dict(item)
         for item in db.scalars(
@@ -490,7 +490,7 @@ def responsibilities(user: User = Depends(current_user), db: Session = Depends(g
 
 
 @router.post("/responsibilities", status_code=201)
-def create_mapping(values: MappingInput, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def create_mapping(values: MappingInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     admin(user)
     scoped(db, Department, values.department_id, user)
     for target in [values.supervisor_id, values.backup_id]:
@@ -522,7 +522,7 @@ def create_mapping(values: MappingInput, user: User = Depends(current_user), db:
 
 
 @router.delete("/responsibilities/{record_id}")
-def delete_mapping(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def delete_mapping(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     admin(user)
     item = scoped(db, ResponsibilityMapping, record_id, user)
     audit(
@@ -548,7 +548,7 @@ class EscalationInput(Input):
 
 
 @router.get("/escalation-rules")
-def escalation_rules(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def escalation_rules(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     admin(user)
     return [
         record_dict(item)
@@ -560,7 +560,7 @@ def escalation_rules(user: User = Depends(current_user), db: Session = Depends(g
 
 @router.put("/escalation-rules")
 def set_escalation(
-    values: EscalationInput, user: User = Depends(current_user), db: Session = Depends(get_db)
+    values: EscalationInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     admin(user)
     scoped(db, Department, values.department_id, user)
