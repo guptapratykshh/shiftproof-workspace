@@ -15,6 +15,10 @@ from .common import audit, enqueue
 def throttle(db: Session, key: str, limit: int = 8):
     """Persist failed-attempt budgets even when the surrounding request is rejected."""
     hashed = digest(key)
+    if db.bind.dialect.name == "mongodb":
+        if db.throttle(hashed, limit) is None:
+            fail(429, "Too many attempts. Please wait 15 minutes before trying again.")
+        return
     from sqlalchemy.dialects.postgresql import insert as pg_insert
     from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
