@@ -34,7 +34,7 @@ def workers(
     active: bool | None = None,
     q: str = "",
     user: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     query = service.visible_workers_query(db, user)
     if department_id:
@@ -78,12 +78,12 @@ def workers(
 
 
 @router.post("/workers", status_code=201)
-def create_worker(values: WorkerInput, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def create_worker(values: WorkerInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     return service.save_worker(db, user, values)
 
 
 @router.get("/workers/{record_id}")
-def worker(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def worker(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     item = db.scalar(service.visible_workers_query(db, user).where(User.id == record_id))
     if not item:
         fail(404, "Worker not found.")
@@ -92,7 +92,7 @@ def worker(record_id: str, user: User = Depends(current_user), db: Session = Dep
 
 @router.put("/workers/{record_id}")
 def update_worker(
-    record_id: str, values: WorkerInput, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: WorkerInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     return service.save_worker(db, user, values, scoped(db, User, record_id, user))
 
@@ -104,7 +104,7 @@ class PinReset(Input):
 
 @router.post("/workers/{record_id}/pin-reset")
 def pin_reset(
-    record_id: str, values: PinReset, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: PinReset, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     target = scoped(db, User, record_id, user)
     if target.role != "worker" or not values.identity_verified:
@@ -152,7 +152,7 @@ def availability(
     record_id: str,
     values: AvailabilityInput,
     user: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     worker = scoped(db, User, record_id, user)
     if worker.role != "worker":
@@ -189,7 +189,7 @@ def update_availability(
     availability_id: str,
     values: AvailabilityInput,
     user: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     worker = scoped(db, User, record_id, user)
     item = scoped(db, WorkerAvailability, availability_id, user)
@@ -250,7 +250,7 @@ def qualification(
     skill_id: str,
     values: QualificationInput,
     user: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     worker = scoped(db, User, record_id, user)
     memberships = db.scalars(
@@ -282,7 +282,7 @@ def qualification(
 
 
 @router.get("/shift-assignments")
-def shift_assignments(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def shift_assignments(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     from ..security import department_ids
 
     query = select(ShiftAssignment).where(
@@ -295,7 +295,7 @@ def shift_assignments(user: User = Depends(current_user), db: Session = Depends(
 
 
 @router.post("/shift-assignments", status_code=201)
-def assign_shift(values: AssignmentInput, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def assign_shift(values: AssignmentInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     from ..security import department_ids
 
     service.require_workforce(db, user, values.department_id)
@@ -313,7 +313,7 @@ def assign_shift(values: AssignmentInput, user: User = Depends(current_user), db
 
 
 @router.delete("/shift-assignments/{record_id}")
-def end_assignment(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def end_assignment(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     item = scoped(db, ShiftAssignment, record_id, user)
     service.require_workforce(db, user, item.department_id)
     item.active = False
