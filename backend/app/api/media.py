@@ -26,7 +26,7 @@ async def upload(
     kind: str = Form("photo"),
     consent: bool = Form(False),
     user: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     if kind == "logo":
         admin(user)
@@ -58,7 +58,7 @@ async def upload(
 
 @router.get("/files/{record_id}")
 def download(
-    record_id: str, purpose: str = "", user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, purpose: str = "", user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     asset = scoped(db, FileAsset, record_id, user)
     if asset.deleted_at or (asset.retention_until and asset.retention_until <= now()):
@@ -97,7 +97,7 @@ class TranscriptionInput(Input):
 
 
 @router.post("/transcriptions", status_code=202)
-def transcribe(values: TranscriptionInput, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def transcribe(values: TranscriptionInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     asset = scoped(db, FileAsset, values.asset_id, user)
     if (
         asset.owner_id != user.id
@@ -129,7 +129,7 @@ class ExtractionInput(Input):
 
 
 @router.post("/extractions", status_code=202)
-def extract(values: ExtractionInput, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def extract(values: ExtractionInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     if not get_settings().gemini_api_key:
         fail(503, "AI extraction is not configured. Complete and review the report fields manually.")
     if values.transcript_id:
@@ -159,7 +159,7 @@ def extract(values: ExtractionInput, user: User = Depends(current_user), db: Ses
 
 
 @router.get("/jobs/{record_id}")
-def job_status(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def job_status(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     job = scoped(db, BackgroundJob, record_id, user)
     if job.actor_id != user.id:
         fail(403, "This processing request belongs to another account.")
@@ -167,7 +167,7 @@ def job_status(record_id: str, user: User = Depends(current_user), db: Session =
 
 
 @router.post("/jobs/{record_id}/retry")
-def retry(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def retry(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     job = scoped(db, BackgroundJob, record_id, user)
     if job.actor_id != user.id or job.kind not in {"transcribe", "extract", "speak"}:
         fail(403, "This job cannot be retried from this account.")
@@ -180,7 +180,7 @@ def retry(record_id: str, user: User = Depends(current_user), db: Session = Depe
 
 
 @router.post("/handover-audio/{version_id}", status_code=202)
-def handover_audio(version_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def handover_audio(version_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     from ..services.handovers import visible_handover
 
     version = scoped(db, HandoverVersion, version_id, user)
