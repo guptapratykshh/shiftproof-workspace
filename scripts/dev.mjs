@@ -7,7 +7,7 @@ if (!existsSync(python)) {
   console.error("Run: cd backend && uv sync --frozen");
   process.exit(1);
 }
-const migration = spawnSync(python, ["-m", "alembic", "upgrade", "head"], {
+const migration = spawnSync(python, ["-m", "app.bootstrap"], {
   cwd: backend,
   stdio: "inherit",
 });
