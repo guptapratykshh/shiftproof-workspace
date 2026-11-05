@@ -38,7 +38,7 @@ router = APIRouter(tags=["Workspace context"])
 
 @router.get("/workspace/context")
 def context(
-    department_id: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db)
+    department_id: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     allowed = department_ids(db, user)
     if department_id:
@@ -228,7 +228,7 @@ def orientation(values: Orientation, user: User = Depends(current_user)):
 
 
 @router.get("/departments/{record_id}/overview")
-def department_overview(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def department_overview(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     require_department(db, user, record_id)
     if user.role == "worker":
         fail(403, "Department administration is for supervisors and administrators.")
@@ -269,7 +269,7 @@ def department_overview(record_id: str, user: User = Depends(current_user), db: 
 
 
 @router.get("/teams/{record_id}/overview")
-def team_overview(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def team_overview(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     from ..models import TeamMembership
 
     team = scoped(db, Team, record_id, user)
@@ -304,7 +304,7 @@ def team_overview(record_id: str, user: User = Depends(current_user), db: Sessio
 
 
 @router.get("/supervisors/{record_id}/overview")
-def supervisor_overview(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def supervisor_overview(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     from ..security import admin
     from ..models import ResponsibilityMapping
 
