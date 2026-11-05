@@ -97,12 +97,10 @@ let seed: {
 };
 
 function deliveryToken(email: string) {
-  const code =
-    "import sqlite3,json,sys,re; c=sqlite3.connect('/tmp/shiftproof-browser-qa/browser-tests.db'); rows=[json.loads(r[0]) for r in c.execute(\"SELECT payload FROM background_jobs WHERE kind='email' ORDER BY created_at DESC\")]; p=next(p for p in rows if p.get('to')==sys.argv[1]); print(re.search(r'token=([\\w-]+)',p['text'])[1])";
   return execFileSync(
     path.resolve("backend/.venv/bin/python"),
-    ["-c", code, email],
-    { encoding: "utf8" },
+    ["tests/read_browser_email.py", email],
+    { encoding: "utf8", cwd: path.resolve("backend"), env: { ...process.env, PYTHONPATH: "." } },
   ).trim();
 }
 async function send(
@@ -303,6 +301,8 @@ test("worker completes critical work and supervisor verifies it through the real
     .getByRole("dialog")
     .getByRole("button", { name: "Save changes" })
     .click();
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.locator(".work-tags").first().getByText("verified", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await expect(
     page.locator(".work-tags").first().getByText("closed", { exact: true }),
