@@ -2,7 +2,7 @@
 
 ShiftProof is a local, full-stack shift-handover application with organization administrator, supervisor and worker workspaces. It preserves the supplied landing/sign-in composition and shared plum/lavender theme, and connects the operational screens to a Python API and persistent database.
 
-The latest delivery stays **local and deployment-ready**, as requested. No new remote deployment has been made. The existing private Sites frontend is separate from this full-stack application.
+The full app runs locally with a MongoDB Atlas database. An optional temporary public tunnel forwards the local frontend and API; it requires the Mac and local processes to stay running. The existing private Sites frontend is separate.
 
 ## Start the full application
 
@@ -12,17 +12,18 @@ Requirements: Node.js 22.12+, Python 3.12+, [uv](https://docs.astral.sh/uv/), an
 npm ci
 cd backend
 uv sync --frozen
+# Copy .env.example to .env and configure DATABASE_URL privately.
 cd ..
 npm run dev:full
 ```
 
-Open **http://localhost:5173**. This command applies database migrations, then starts the frontend, API on port 8000, and background worker. Stop all three with Ctrl+C. The native development setup uses SQLite at `backend/data/shiftproof.db`; production requires PostgreSQL. Do not run two full development launchers against the same ports.
+Open **http://localhost:5173**. This command initializes MongoDB collections, validators and indexes, then starts the frontend, API on port 8000, and background worker. Stop all three with Ctrl+C. Set `DATABASE_URL` in `backend/.env` to your MongoDB replica-set/Atlas connection, selecting the `shiftproof` database. Application records are stored directly through PyMongo; SQLite is retained only for legacy imports and isolated regression tests. Do not run two full development launchers against the same ports.
 
 Create your own organization at `/signup`. Registration queues a verification link before creating the organization. With the default `MAIL_MODE=file`, the background worker writes private `.eml` messages to `backend/data/outbox/`. Open the newest message locally and follow its link; the confirmation screen identifies this local-only mode. For real inbox delivery, configure SMTP privately in `backend/.env` and restart the API and worker; see [email setup](docs/integrations.md#email). SMTP confirmation means queued for delivery, not confirmed inbox placement. No shared demo login is installed.
 
 Complete the first five setup steps: organization profile/timezone, departments, teams, shifts, and an **activated** primary supervisor. Supervisor invitations use the same outbox. Worker creation provides a private activation link; the worker chooses their own six-digit PIN. PINs are never shown to managers.
 
-Optional overrides belong in `backend/.env` (copy `backend/.env.example`). Frontend-only `npm run dev` intentionally reports unavailable authentication when `VITE_API_BASE_URL` is unset. `dev:full` sets it to `/api/v1` automatically.
+Database and optional provider settings belong in `backend/.env` (copy `backend/.env.example`). Frontend-only `npm run dev` intentionally reports unavailable authentication when `VITE_API_BASE_URL` is unset. `dev:full` sets it to `/api/v1` automatically.
 
 ## What is included
 
@@ -61,16 +62,17 @@ The public browser suite checks ten routes at 320, 390, 768, 900, 1169 and 1600p
 
 The [validation record](docs/validation.md) lists the completed checks and remaining external setup.
 
-PostgreSQL verification is supported with `TEST_DATABASE_URL` pointing to a dedicated test database. The fixture creates and removes uniquely named schemas. Never point test tools at a production database. Backup/restore verification is described in [deployment](docs/deployment.md).
+MongoDB verification uses `DATABASE_URL` and `TEST_DATABASE_URL` pointing to the same empty `shiftproof_test_<unique suffix>` database. Fixtures refuse other names and delete that test database afterward. Without `TEST_DATABASE_URL`, regression tests use temporary SQLite databases. Never point test tools at the application database. Backup/restore verification is described in [deployment](docs/deployment.md).
 
 ## Deployment preparation
 
 ```sh
-# Local PostgreSQL + API + worker + frontend + captured development email
+# API + worker + frontend + captured development email, using external MongoDB
+# Set DATABASE_URL privately in the root .env for Docker Compose.
 # Requires a running Docker daemon.
 docker compose up -d --build
 ```
 
-Open http://localhost:8080 and development mail at http://localhost:8025. Database/API ports stay internal. Production adds the HTTPS override and real mail/storage configuration; see [deployment](docs/deployment.md) before using it. Docker configuration has been checked, but a container build/run is not claimed because the Docker daemon was unavailable during this delivery.
+Open http://localhost:8080 and development mail at http://localhost:8025. The API stays internal; MongoDB uses its configured TLS connection. Production adds the HTTPS override and real mail/storage configuration; see [deployment](docs/deployment.md) before using it. Docker configuration has been checked, but a container build/run is not claimed because the Docker daemon was unavailable during this delivery.
 
-Source layout: `src/pages/workspace/` contains role screens, `src/styles.css` shared tokens/components, `backend/app/api/` endpoints, `backend/app/services/` business rules, `backend/app/models/` persistence, `backend/migrations/` schema/history constraints, and `backend/app/worker.py` durable jobs. See [architecture and decisions](docs/architecture.md).
+Source layout: `src/pages/workspace/` contains role screens, `src/styles.css` shared tokens/components, `backend/app/api/` endpoints, `backend/app/services/` business rules, `backend/app/models/` shared schema, `backend/app/mongo.py` native persistence, `backend/migrations/` legacy SQL migrations, and `backend/app/worker.py` durable jobs. See [architecture and decisions](docs/architecture.md).
