@@ -1,5 +1,24 @@
 # Local validation — 1 November 2026
 
+## MongoDB primary database — 5 November 2026
+
+Work was completed in the original `shiftproof` checkout; the temporary migration worktree and branch were removed. The Mac Wi-Fi DNS was changed to Cloudflare/Google with the user's explicit approval after the router failed Atlas DNS resolution.
+
+- Migrated and SHA-256 verified **2,172 records across 50 mapped collections** into the separate Atlas **`shiftproof`** database. The supplied `food-rescue` database was not used.
+- Kept a consistent SQLite/evidence backup under ignored `backend/data/backups/`. The old SQLite file stayed unchanged after the live app started writing to MongoDB.
+- Existing Atlas workflow/integrity/email cases: **41 passed** across the complete run and the targeted rerun after fixing JSON lookup and simultaneous report retries. The additional legacy SQL migration test passed separately in that run.
+- New native MongoDB tests: **4 passed**, covering rollback, timestamp precision, optional-null uniqueness, references, immutable history, competing writes/job claims, resumable verified import, refusal to overwrite, and actual BSON backup/restore with indexes and checksums.
+- SQL regression suite: **42 passed, 4 Mongo-only tests skipped**. Production frontend build passed. Compose configuration and backup/restore shell syntax passed; Docker container execution remains unverified.
+- Local and public API health both reported `database_type: mongodb`, connected, with zero failed background jobs. The scheduler continued completing jobs after restart.
+- Public browser checks passed for landing/signup, all three roles, saved preferences, automatic notifications and untrusted-origin rejection, with no browser errors. Temporary verification accounts were removed afterward.
+
+Browser responsive coverage passed at 320, 390, 768, 900, 1169, 1470, 1600, 1920 and 2560 CSS pixels across English/dark and Hindi/light workspace screens. The complete workspace run passed five cases; two initially failing browser checks passed on focused rerun after waiting for dialog save completion and finishing the database switch. Combined result: **7 passed, 1 production-only case skipped**. The task and handover flows were verified through the real Atlas-backed API. The production-only offline-shell case was not repeated in this database pass.
+
+The previous quick tunnel expired and was replaced. Its current address is stored in ignored `.sites-runtime/public-tunnel.json`; public access still depends on this Mac and its local services. MongoDB credentials and SMTP settings remain private and were excluded from commits. Evidence remains in local/private object storage rather than in MongoDB.
+
+Earlier sections below are historical validation records, including the former SQL deployment.
+
+
 ## Theme interaction update — 2 November 2026
 
 The shared sun/moon button now switches directly between light and dark on every public and workspace screen. The appearance menu and the separate Settings appearance selector were removed. Choices persist across routes and reloads; an older saved System preference is converted once to its currently resolved light/dark appearance. Keyboard activation keeps focus on the button, with action labels in English and Hindi.
