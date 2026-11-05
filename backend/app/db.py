@@ -37,6 +37,10 @@ class Base(DeclarativeBase):
 
 
 def make_engine(url: str):
+    if url.startswith(("mongodb://", "mongodb+srv://")):
+        from .mongo import MongoEngine
+
+        return MongoEngine(url)
     if url.startswith("sqlite"):
         Path("data").mkdir(exist_ok=True)
     engine = create_engine(
@@ -55,8 +59,16 @@ def make_engine(url: str):
     return engine
 
 
+def make_session_factory(engine):
+    if engine.dialect.name == "mongodb":
+        from .mongo import MongoSessionFactory
+
+        return MongoSessionFactory(engine)
+    return sessionmaker(engine, expire_on_commit=False)
+
+
 engine = make_engine(get_settings().database_url)
-SessionLocal = sessionmaker(engine, expire_on_commit=False)
+SessionLocal = make_session_factory(engine)
 
 
 def get_db():
