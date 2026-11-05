@@ -1,4 +1,4 @@
-from sqlalchemy import exists, or_, select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from ..db import now
@@ -90,9 +90,8 @@ def task_query(db: Session, user: User):
         teams = select(TeamMembership.team_id).where(
             TeamMembership.user_id == user.id, TeamMembership.active.is_(True)
         )
-        own = exists(
-            select(TaskAssignment.id).where(
-                TaskAssignment.task_id == Task.id,
+        own = Task.id.in_(
+            select(TaskAssignment.task_id).where(
                 TaskAssignment.ended_at.is_(None),
                 or_(TaskAssignment.user_id == user.id, TaskAssignment.team_id.in_(teams)),
             )
