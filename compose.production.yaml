@@ -15,9 +15,6 @@ services:
     environment: *production
   migrate:
     environment: *production
-  database:
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a strong database password}
   mailpit:
     profiles: [development-mail]
   web:
