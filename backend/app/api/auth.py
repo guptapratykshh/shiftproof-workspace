@@ -25,27 +25,27 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/register", status_code=202)
-def register(values: Registration, request: Request, db: Session = Depends(get_db)):
+def register(values: Registration, request: Request, db: Session = Depends(get_db, scope="function")):
     return service.register(db, values, request)
 
 
 @router.post("/verify")
-def verify(values: TokenInput, db: Session = Depends(get_db)):
+def verify(values: TokenInput, db: Session = Depends(get_db, scope="function")):
     return service.verify_registration(db, values.token)
 
 
 @router.post("/login/{role}")
-def login(role: str, values: Login, request: Request, response: Response, db: Session = Depends(get_db)):
+def login(role: str, values: Login, request: Request, response: Response, db: Session = Depends(get_db, scope="function")):
     return service.login(db, role, values, request, response)
 
 
 @router.post("/activate")
-def activate(values: ActivateInput, db: Session = Depends(get_db)):
+def activate(values: ActivateInput, db: Session = Depends(get_db, scope="function")):
     return service.activate(db, values)
 
 
 @router.get("/activation")
-def activation_info(token: str, db: Session = Depends(get_db)):
+def activation_info(token: str, db: Session = Depends(get_db, scope="function")):
     from ..models import Invitation
     from ..security import digest
     from ..db import now
@@ -63,7 +63,7 @@ def activation_info(token: str, db: Session = Depends(get_db)):
 
 
 @router.post("/recover", status_code=202)
-def recover(values: RecoverInput, request: Request, db: Session = Depends(get_db)):
+def recover(values: RecoverInput, request: Request, db: Session = Depends(get_db, scope="function")):
     service.throttle(db, f"recover:{request.client.host if request.client else 'unknown'}", 10)
     query = select(User).where(
         User.email == str(values.email).lower(), User.role == values.role, User.active.is_(True)
@@ -83,7 +83,7 @@ def recover(values: RecoverInput, request: Request, db: Session = Depends(get_db
 
 
 @router.get("/me")
-def me(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def me(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     departments = db.scalars(
         select(DepartmentMembership).where(
             DepartmentMembership.user_id == user.id, DepartmentMembership.active.is_(True)
@@ -118,7 +118,7 @@ def me(request: Request, user: User = Depends(current_user), db: Session = Depen
 
 @router.post("/logout")
 def logout(
-    request: Request, response: Response, user: User = Depends(current_user), db: Session = Depends(get_db)
+    request: Request, response: Response, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     request.state.session.revoked = True
     response.delete_cookie("shiftproof_session", path="/")
@@ -128,7 +128,7 @@ def logout(
 
 
 @router.get("/sessions")
-def sessions(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def sessions(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     return [
         {**record_dict(item), "current": item.id == request.state.session.id}
         for item in db.scalars(
@@ -138,7 +138,7 @@ def sessions(request: Request, user: User = Depends(current_user), db: Session =
 
 
 @router.delete("/sessions/{session_id}")
-def revoke(session_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def revoke(session_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     session = db.scalar(
         select(DeviceSession).where(DeviceSession.id == session_id, DeviceSession.user_id == user.id)
     )
@@ -162,7 +162,7 @@ class ChangeSecret(Input):
 
 @router.put("/password")
 def change_secret(
-    values: ChangeSecret, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)
+    values: ChangeSecret, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     old_hash = user.pin_hash if user.role == "worker" else user.password_hash
     if not verify_secret(values.current, old_hash):
