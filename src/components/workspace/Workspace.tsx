@@ -339,9 +339,11 @@ export function Workspace() {
   useEffect(() => {
     if (!session || !API_BASE || !online) return;
     const refresh = () => {
-      void client.invalidateQueries({
-        predicate: (query) => query.queryKey[0] !== "session",
-      });
+      void client.invalidateQueries(
+        { predicate: (query) => query.queryKey[0] !== "session" },
+        // Let slower requests finish instead of restarting them every refresh.
+        { cancelRefetch: false },
+      );
     };
     // Temporary public tunnels may buffer SSE; keep their workspaces current.
     if (import.meta.env.VITE_LIVE_UPDATES === "poll") {
