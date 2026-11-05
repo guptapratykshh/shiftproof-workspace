@@ -11,7 +11,8 @@ from email.utils import format_datetime
 from pathlib import Path
 
 from sqlalchemy import or_, select, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.orm.exc import StaleDataError
 
 from .config import get_settings
 from .db import SessionLocal, new_id, now
@@ -139,11 +140,15 @@ def scheduled(db):
     ):
         actor = db.get(User, template.created_by)
         try:
-            with db.begin_nested():
+            scope = db.independent() if db.bind.dialect.name == "mongodb" else db.begin_nested()
+            with scope:
                 if not actor.active:
                     raise ValueError("Template owner is inactive")
                 task = create_task(db, actor, template_values(db, actor, template))
                 task.template_id = template.id
+                template.next_run = now() + timedelta(minutes=template.recurrence_minutes)
+        except (SQLAlchemyError, StaleDataError):
+            raise
         except Exception:
             template.active = False
             notify(
@@ -156,7 +161,7 @@ def scheduled(db):
                 "/workspace/tasks",
                 "administrative",
             )
-        template.next_run = now() + timedelta(minutes=template.recurrence_minutes)
+            template.next_run = now() + timedelta(minutes=template.recurrence_minutes)
     for recipient in db.scalars(
         select(HandoverRecipient).join(HandoverVersion, HandoverVersion.id == HandoverRecipient.version_id)
     ):
@@ -265,6 +270,8 @@ def execute(job_id: str, lease: str):
                 if expired(db, job):
                     raise ValueError("The original processing source is no longer retained.")
             if job.kind == "email":
+                if db.bind.dialect.name == "mongodb":
+                    db.commit()
                 result = email(job)
             elif job.kind == "schedule":
                 result = scheduled(db)
@@ -275,6 +282,8 @@ def execute(job_id: str, lease: str):
                 asset = db.get(FileAsset, job.payload["asset_id"])
                 if not asset or asset.deleted_at or asset.retention_until <= now():
                     raise ValueError("The recording is no longer retained.")
+                if db.bind.dialect.name == "mongodb":
+                    db.commit()
                 data = transcribe(wav_for_transcription(read_bytes(asset)), job.payload["language"], job.id)
                 transcript = Transcript(
                     organization_id=job.organization_id,
@@ -297,6 +306,8 @@ def execute(job_id: str, lease: str):
             elif job.kind == "extract":
                 from .integrations.gemini.client import extract
 
+                if db.bind.dialect.name == "mongodb":
+                    db.commit()
                 output = extract(job.payload["text"])
                 extraction = AIExtraction(
                     organization_id=job.organization_id,
@@ -318,6 +329,8 @@ def execute(job_id: str, lease: str):
                 from .integrations.gnani.client import speak
                 from .services.storage import store_asset
 
+                if db.bind.dialect.name == "mongodb":
+                    db.commit()
                 audio = speak(job.payload["text"])
                 asset = store_asset(
                     db, user, audio, "handover.wav", "audio/wav", "audio", job.payload["department_id"], True
