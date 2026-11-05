@@ -1,9 +1,11 @@
 from typing import Literal
+import time
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
 
 from ..db import get_db, now
 from ..models import Clarification, Conflict, ConflictReport, Report, ReportReview, ReportTaskLink, Task, User
@@ -24,7 +26,7 @@ def reports(
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=200),
     user: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     query = service.report_query(db, user)
     for column, value in [
@@ -49,14 +51,35 @@ def reports(
 
 
 @router.post("/reports", status_code=201)
-def submit(values: ReportInput, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    item = service.submit(db, user, values)
-    return {"status": "submitted", "report": record_dict(item)}
+def submit(
+    values: ReportInput,
+    request: Request,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db, scope="function"),
+):
+    # A report has a stable submission key. MongoDB aborts conflicting snapshot
+    # transactions rather than waiting for a SQL row lock; retry the entire
+    # idempotent operation with fresh authorization and a fresh snapshot.
+    for attempt in range(6):
+        try:
+            item = service.submit(db, user, values)
+            if db.bind.dialect.name == "mongodb":
+                db.commit()
+            return {"status": "submitted", "report": record_dict(item)}
+        except StaleDataError:
+            if db.bind.dialect.name != "mongodb" or attempt == 5:
+                raise
+            db.rollback()
+            time.sleep(0.15 * 2**attempt)
+            user = current_user(request, db)
 
 
 @router.get("/reports/{record_id}")
 def detail(
-    record_id: str, purpose: str = "", user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str,
+    purpose: str = "",
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db, scope="function"),
 ):
     return service.report_detail(db, user, service.accessible_report(db, user, record_id, purpose))
 
@@ -69,7 +92,10 @@ class Correction(Input):
 
 @router.post("/reports/{record_id}/corrections", status_code=201)
 def correct(
-    record_id: str, values: Correction, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str,
+    values: Correction,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db, scope="function"),
 ):
     item = service.accessible_report(db, user, record_id, purpose=values.reason)
     if item.author_id != user.id:
@@ -124,7 +150,12 @@ class Review(Input):
 
 
 @router.post("/reports/{record_id}/review")
-def review(record_id: str, values: Review, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def review(
+    record_id: str,
+    values: Review,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db, scope="function"),
+):
     item = service.accessible_report(db, user, record_id, values.note)
     require_department(db, user, item.department_id, "review")
     if values.version != item.version:
@@ -214,7 +245,10 @@ class ExistingTask(Input):
 
 @router.post("/reports/{record_id}/tasks", status_code=201)
 def link_task(
-    record_id: str, values: ExistingTask, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str,
+    values: ExistingTask,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db, scope="function"),
 ):
     from ..services.tasks import visible_task
 
@@ -265,7 +299,7 @@ class ClarificationResponse(Input):
 
 
 @router.get("/clarifications")
-def clarifications(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def clarifications(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     query = select(Clarification).where(Clarification.organization_id == user.organization_id)
     if user.role == "worker":
         query = query.where(Clarification.recipient_id == user.id)
@@ -283,7 +317,7 @@ def respond(
     record_id: str,
     values: ClarificationResponse,
     user: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     item = scoped(db, Clarification, record_id, user)
     if item.recipient_id != user.id:
@@ -306,7 +340,7 @@ def respond(
 
 
 @router.get("/conflicts")
-def conflicts(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def conflicts(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     query = select(Conflict).where(
         Conflict.organization_id == user.organization_id, Conflict.department_id.in_(department_ids(db, user))
     )
@@ -323,7 +357,10 @@ def conflicts(user: User = Depends(current_user), db: Session = Depends(get_db))
 
 @router.get("/conflicts/{record_id}")
 def conflict_detail(
-    record_id: str, purpose: str = "", user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str,
+    purpose: str = "",
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db, scope="function"),
 ):
     item = scoped(db, Conflict, record_id, user)
     require_department(db, user, item.department_id, "review")
@@ -341,7 +378,10 @@ class Resolution(Input):
 
 @router.post("/conflicts/{record_id}/resolve")
 def resolve_conflict(
-    record_id: str, values: Resolution, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str,
+    values: Resolution,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db, scope="function"),
 ):
     item = scoped(db, Conflict, record_id, user)
     require_department(db, user, item.department_id, "review")
