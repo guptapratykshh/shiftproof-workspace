@@ -2,7 +2,7 @@
 
 ## Application boundaries
 
-React/TypeScript renders the public pages and role workspaces. React Query owns server state; Zustand holds the current session in memory. FastAPI validates requests using Pydantic, enforces authorization centrally and delegates workflows to services. SQLAlchemy models and Alembic migrations support PostgreSQL and SQLite for development. The API and background worker share the database and private evidence store. An nginx frontend proxies `/api/v1`; the optional production Caddy service terminates HTTPS.
+React/TypeScript renders the public pages and role workspaces. React Query owns server state; Zustand holds the current session in memory. FastAPI validates requests using Pydantic, enforces authorization centrally and delegates workflows to services. SQLAlchemy supplies shared model metadata and query expressions; `mongo_query.py` translates supported expressions into native MongoDB pipelines. `mongo.py` persists directly through PyMongo, using snapshot transactions, majority writes, unique indexes, schema validators, reference checks and optimistic revisions. There is no SQL mirror. Alembic and SQL drivers remain for legacy imports and isolated regression tests. The API and background worker share the database and private evidence store. An nginx frontend proxies `/api/v1`; the optional production Caddy service terminates HTTPS.
 
 The API is the authority for permissions, lifecycle transitions, verification, report receipts and metrics. There are no hardcoded dashboard populations or simulated successful submissions. Frontend controls are convenience, not authorization. The API's OpenAPI reference is available at `/docs` on the API origin during local development.
 
@@ -20,7 +20,7 @@ Reports retain separate source transcript, extraction and human-confirmed immuta
 
 A report's UUID is unique per organization and original author. Stable request hashes reject changed-content reuse of the same key. A user-row lock serializes simultaneous retries; the final receipt always comes from the API. Immediate alerts have their own idempotency key and link to the later report so an early safety notification does not duplicate on submission.
 
-Published handover snapshots, report versions, reviews, task verification/history, alert history and audit records are append-only. ORM guards and PostgreSQL/SQLite database triggers reject edits/deletes. Current mutable task/report rows use optimistic version checks for conflicting actions. The handover version and recipient/item are recorded with each acknowledgement. Overall receipt never substitutes for individual critical-item receipt.
+Published handover snapshots, report versions, reviews, task verification/history, alert history and audit records are append-only. The MongoDB persistence layer rejects edits/deletes to these records; native validators and indexes enforce types and uniqueness. A privileged direct database writer can bypass application history guards, so application traffic must go through the API and database administrative access must be restricted. Legacy SQL databases additionally use triggers. Current mutable task/report rows use optimistic version checks for conflicting actions. The handover version and recipient/item are recorded with each acknowledgement. Overall receipt never substitutes for individual critical-item receipt.
 
 ## Offline and shared devices
 
@@ -58,4 +58,10 @@ Department health is deterministic: open critical alerts make it critical; block
 
 ## Deliberate implementation choices
 
-The screenshot illustration is an editable SVG recreation because the original asset was unavailable. Shared native/React UI primitives are used rather than adding a second component framework. Repository modules separate pages by operational area; the service layer owns business decisions. SSE supplies updates and polling provides a reconnect fallback. SQLite is for local convenience and tests; production settings reject it. Provider adapter contracts follow official documentation, but credentialed integration validation remains a separate step.
+The screenshot illustration is an editable SVG recreation because the original asset was unavailable. Shared native/React UI primitives are used rather than adding a second component framework. Repository modules separate pages by operational area; the service layer owns business decisions. SSE supplies updates and polling provides a reconnect fallback. MongoDB is the configured primary database. SQLite is retained for import sources and isolated tests; production settings reject it. Provider adapter contracts follow official documentation, but credentialed integration validation remains a separate step.
+
+## MongoDB storage and transactions
+
+Each mapped entity has its own collection and retains its original string ID. Timestamps use fixed-width UTC ISO strings with six fractional digits, preserving microsecond identity for report corrections and sortable date ranges. Session-activity TTL records use native BSON dates in a separate collection so browser activity cannot conflict with logout. MongoDB requires a replica set (Atlas supplies one) for atomic multi-record operations.
+
+Write conflicts fail explicitly rather than silently overwrite newer records. External email/speech/AI calls run outside long-lived database transactions; durable leases and revision checks protect their final updates. Recurring tasks commit each allocation and its next-run timestamp together. Evidence files remain in the configured private local directory or S3; moving structured records to Atlas does not upload local media.
