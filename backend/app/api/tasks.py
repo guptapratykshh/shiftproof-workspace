@@ -37,7 +37,7 @@ class AssociationInput(Input):
 
 
 @router.post("/task-associations")
-def associations(values: AssociationInput, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def associations(values: AssociationInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     import re
 
     require_department(db, user, values.department_id)
@@ -66,7 +66,7 @@ def associations(values: AssociationInput, user: User = Depends(current_user), d
 
 
 @router.get("/tasks/{record_id}/evidence")
-def evidence(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def evidence(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     task = service.visible_task(db, user, record_id)
     return [
         record_dict(asset)
@@ -80,7 +80,7 @@ def evidence(record_id: str, user: User = Depends(current_user), db: Session = D
 
 @router.post("/tasks/{record_id}/evidence", status_code=201)
 def attach_evidence(
-    record_id: str, values: EvidenceLink, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: EvidenceLink, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     task = service.visible_task(db, user, record_id)
     require_department(db, user, task.department_id, "manage")
@@ -136,7 +136,7 @@ def tasks(
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=200),
     user: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     query = service.task_query(db, user)
     for column, value in [
@@ -182,18 +182,18 @@ def tasks(
 
 
 @router.post("/tasks", status_code=201)
-def create(values: TaskInput, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def create(values: TaskInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     return service.task_detail(db, user, service.create_task(db, user, values))
 
 
 @router.get("/tasks/{record_id}")
-def detail(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def detail(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     return service.task_detail(db, user, service.visible_task(db, user, record_id))
 
 
 @router.post("/tasks/{record_id}/actions")
 def action(
-    record_id: str, values: TaskAction, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: TaskAction, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     task = service.transition(db, user, service.visible_task(db, user, record_id), values)
     return service.task_detail(db, user, task)
@@ -209,7 +209,7 @@ class Reassignment(Input):
 
 @router.post("/tasks/{record_id}/reassign")
 def reassign(
-    record_id: str, values: Reassignment, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: Reassignment, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     task = service.visible_task(db, user, record_id)
     if task.version != values.version:
@@ -227,7 +227,7 @@ class BulkReassignment(Input):
 
 @router.post("/task-reassignments")
 def bulk_reassign(
-    values: BulkReassignment, user: User = Depends(current_user), db: Session = Depends(get_db)
+    values: BulkReassignment, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     results = []
     for task_id in set(values.task_ids):
@@ -247,7 +247,7 @@ class Comment(Input):
 
 @router.post("/tasks/{record_id}/comments", status_code=201)
 def comment(
-    record_id: str, values: Comment, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: Comment, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     task = service.visible_task(db, user, record_id)
     if values.internal:
@@ -282,7 +282,7 @@ class TaskEdit(Input):
 
 
 @router.put("/tasks/{record_id}")
-def edit(record_id: str, values: TaskEdit, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def edit(record_id: str, values: TaskEdit, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     task = service.visible_task(db, user, record_id)
     require_department(db, user, task.department_id, "manage")
     if task.version != values.version or task.status in {"verified", "closed"}:
@@ -336,7 +336,7 @@ def suggestions(
     required_skills: str = "",
     shift_id: str | None = None,
     user: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     require_department(db, user, department_id, "manage")
     return {
@@ -356,7 +356,7 @@ class TemplateInput(Input):
 
 
 @router.get("/task-templates")
-def templates(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def templates(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     return [
         record_dict(item)
         for item in db.scalars(
@@ -369,7 +369,7 @@ def templates(user: User = Depends(current_user), db: Session = Depends(get_db))
 
 
 @router.post("/task-templates", status_code=201)
-def template(values: TemplateInput, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def template(values: TemplateInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     require_department(db, user, values.task.department_id, "manage")
     if values.next_run and not values.next_run.tzinfo:
         fail(422, "Schedule must include a timezone.")
@@ -396,7 +396,7 @@ def template(values: TemplateInput, user: User = Depends(current_user), db: Sess
 
 
 @router.post("/task-templates/{record_id}/apply", status_code=201)
-def apply_template(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def apply_template(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     item = scoped(db, TaskTemplate, record_id, user)
     require_department(db, user, item.department_id, "manage")
     task = service.create_task(db, user, service.template_values(db, user, item))
@@ -405,7 +405,7 @@ def apply_template(record_id: str, user: User = Depends(current_user), db: Sessi
 
 
 @router.delete("/task-templates/{record_id}")
-def stop_template(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def stop_template(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     item = scoped(db, TaskTemplate, record_id, user)
     require_department(db, user, item.department_id, "manage")
     item.active = False
