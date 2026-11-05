@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     app_env: str = "development"
-    database_url: str = "sqlite:///./data/shiftproof.db"
+    database_url: str = "mongodb://127.0.0.1:27017/shiftproof?replicaSet=rs0"
     frontend_url: str = "http://localhost:5173"
     allowed_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     cookie_secure: bool = False
@@ -43,8 +43,8 @@ class Settings(BaseSettings):
         if self.app_env == "production":
             if not self.cookie_secure or self.mail_mode != "smtp":
                 raise ValueError("Production requires secure cookies and SMTP email delivery")
-            if not self.database_url.startswith("postgresql"):
-                raise ValueError("Production requires PostgreSQL")
+            if not self.database_url.startswith(("postgresql", "mongodb://", "mongodb+srv://")):
+                raise ValueError("Production requires MongoDB or PostgreSQL")
             if not self.frontend_url.startswith("https://"):
                 raise ValueError("Production requires an HTTPS frontend")
         return self
