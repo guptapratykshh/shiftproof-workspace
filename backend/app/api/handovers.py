@@ -24,7 +24,7 @@ router = APIRouter(tags=["Handovers"])
 
 
 @router.get("/handovers")
-def handovers(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def handovers(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     return [
         record_dict(item, {"draft"})
         for item in db.scalars(
@@ -44,7 +44,7 @@ class Draft(Input):
 
 
 @router.post("/handovers", status_code=201)
-def draft(values: Draft, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def draft(values: Draft, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     require_department(db, user, values.department_id, "publish")
     for shift_id in [values.shift_id, values.incoming_shift_id]:
         if shift_id:
@@ -76,7 +76,7 @@ def draft(values: Draft, user: User = Depends(current_user), db: Session = Depen
 
 
 @router.get("/handovers/{record_id}")
-def detail(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def detail(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     item = service.visible_handover(db, user, record_id)
     versions = []
     for version in db.scalars(
@@ -118,7 +118,7 @@ class SaveDraft(Input):
 
 @router.put("/handovers/{record_id}/draft")
 def save_draft(
-    record_id: str, values: SaveDraft, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: SaveDraft, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     item = service.visible_handover(db, user, record_id)
     require_department(db, user, item.department_id, "publish")
@@ -133,7 +133,7 @@ def save_draft(
 
 @router.post("/handovers/{record_id}/publish", status_code=201)
 def publish(
-    record_id: str, values: Publish, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: Publish, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     item = service.visible_handover(db, user, record_id)
     require_department(db, user, item.department_id, "publish")
@@ -150,7 +150,7 @@ class Acknowledgement(Input):
 
 @router.post("/handovers/{record_id}/acknowledge")
 def acknowledge(
-    record_id: str, values: Acknowledgement, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: Acknowledgement, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     handover = service.visible_handover(db, user, record_id)
     version = scoped(db, HandoverVersion, values.version_id, user)
