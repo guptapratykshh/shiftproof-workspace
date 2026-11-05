@@ -55,6 +55,8 @@ async def request_boundary(request: Request, call_next):
     try:
         response = await call_next(request)
     except Exception:
+        if settings.app_env == "test":
+            raise
         logger.error("request_failed id=%s method=%s path=%s", request_id, request.method, request.url.path)
         return JSONResponse(
             {"detail": "We couldn’t complete the request. Please try again.", "request_id": request_id},
@@ -108,6 +110,7 @@ async def concurrent_error(_request, _error):
 def health():
     try:
         with SessionLocal() as db:
+            database_type = db.bind.dialect.name
             db.execute(text("SELECT 1"))
             failed = db.scalar(
                 select(func.count()).select_from(BackgroundJob).where(BackgroundJob.status == "failed")
@@ -115,6 +118,7 @@ def health():
         return {
             "status": "ok",
             "database": "connected",
+            "database_type": database_type,
             "failed_jobs": failed,
             "providers": {
                 "gnani_prisma": bool(settings.gnani_api_key),
