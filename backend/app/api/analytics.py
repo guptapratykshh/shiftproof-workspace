@@ -23,7 +23,7 @@ def analytics(
     category: str | None = None,
     status: str | None = None,
     user: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     if user.role == "worker":
         fail(403, "Operational analytics are for authorized supervisors and administrators.")
