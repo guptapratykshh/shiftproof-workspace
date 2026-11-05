@@ -40,7 +40,7 @@ def fail(status: int, message: str):
     raise HTTPException(status_code=status, detail=message)
 
 
-def current_user(request: Request, db: Session = Depends(get_db)) -> User:
+def current_user(request: Request, db: Session = Depends(get_db, scope="function")) -> User:
     raw = request.cookies.get("shiftproof_session", "")
     session = db.scalar(select(DeviceSession).where(DeviceSession.token_hash == digest(raw))) if raw else None
     if not session or session.revoked or session.expires_at <= now():
@@ -66,7 +66,10 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     activity = request.headers.get("X-User-Activity")
     passive = request.url.path.endswith(("/events", "/notifications", "/workspace/context", "/auth/me"))
     if activity == "1" or (activity is None and not passive):
-        session.last_seen = now()
+        if db.bind.dialect.name == "mongodb":
+            db.touch_session(session, now())
+        else:
+            session.last_seen = now()
     request.state.session = session
     return user
 
