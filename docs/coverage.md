@@ -35,18 +35,18 @@ This maps the PDF and pasted master prompt to the local implementation. The scre
 | Offline reporting | Encrypted IndexedDB, separate states, UUID/request hash, retry, cross-tab locking, explicit account header | Browser tests cover encrypted local persistence, reconnect receipt and account switching; concurrent API retries create one report |
 | Shared-device sessions | Memory-only session/key, explicit logout, local lock, idle/absolute expiry and revoked sessions | Passive polling cannot extend an idle session; a full offline reload cannot unlock a workspace |
 | Real analytics | Seven families: tasks, safety, quality, reports, workforce, handovers and cross-department comparison | Real aggregation tests, date/scope filters, charts and CSV export; responses document cohorts/denominators |
-| Audit and immutable history | Individual attribution, redacted sensitive access, immutable version/history tables | ORM restrictions plus actual PostgreSQL/SQLite database UPDATE/DELETE trigger tests |
+| Audit and immutable history | Individual attribution, redacted sensitive access, immutable version/history tables | MongoDB application persistence guards; native transaction/immutability tests. Legacy PostgreSQL/SQLite trigger tests remain separate. |
 | Background processing | Database queue, deduplication, leases/recovery, retry/backoff, recurring scheduler | Lease/failure tests; operational monitoring and queue screens available |
 | Evidence and retention | Private disk/S3 adapter, validation, photo metadata removal, consent, scoped downloads and retention | Private-file/read-time-retention tests; live S3 and PDF scanner configuration still required |
-| Local/deployment tooling | Native full-stack launcher, lockfiles, Docker/PostgreSQL/nginx/Caddy config, migration and backup/restore scripts | Native app and production bundle checked; compose parsed. Docker daemon/build/TLS and external services not verified here |
+| Local/deployment tooling | Native full-stack launcher, lockfiles, Docker/external MongoDB/nginx/Caddy config, migration and backup/restore scripts | Native app and production bundle checked; compose parsed. Docker daemon/build/TLS and external services not verified here |
 
 ## Verification record
 
-The executable sources are `tests/pages.spec.ts`, `integration/workspace.spec.ts`, `backend/tests/test_workflows.py`, `backend/tests/test_integrity.py`, `backend/tests/test_migrations.py` and `backend/tests/verify_postgres_restore.py`. The workspace suite uses a real isolated API/database; API tests run on SQLite and PostgreSQL. `SHIFTPROOF_BUILD_TEST=1 npm run test:workspace` serves a production bundle and also checks the offline static shell.
+The executable sources are `tests/pages.spec.ts`, `integration/workspace.spec.ts`, `backend/tests/test_workflows.py`, `backend/tests/test_integrity.py`, `backend/tests/test_migrations.py`, `backend/tests/test_mongo.py` and the legacy `backend/tests/verify_postgres_restore.py`. The workspace suite uses a real isolated API/database; API tests run on MongoDB Atlas and isolated SQLite; prior PostgreSQL results are retained separately. `SHIFTPROOF_BUILD_TEST=1 npm run test:workspace` serves a production bundle and also checks the offline static shell.
 
 Public responsive checks cover 320, 390, 768, 900, 1169 and 1600px in both languages/themes. Operational responsive checks cover the same six widths across 15 administrator routes, 17 supervisor routes and 13 worker routes, including record details, list/board/calendar views and a 320px task form. Mobile navigation keyboard dismissal and Hindi/light review are also checked. Visual capture files live in `artifacts/review/` after the final run. Browser tests are not exhaustive assistive-technology or device-farm certification.
 
-The PostgreSQL recovery drill uses actual migrations, database history constraints, `pg_dump`/`pg_restore` and a paired evidence checksum. It does not prove a future host's automated backup schedule. `docs/deployment.md` describes how to repeat it.
+The PostgreSQL recovery drill uses actual migrations, database history constraints, `pg_dump`/`pg_restore` and a paired evidence checksum. It does not prove a future host's automated backup schedule. The original SQL drill is retained for legacy recovery. Current MongoDB BSON backup/restore instructions are in `docs/deployment.md`.
 
 ## Items requiring environment-specific acceptance
 
