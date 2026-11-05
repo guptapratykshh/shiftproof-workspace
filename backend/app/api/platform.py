@@ -18,7 +18,7 @@ router = APIRouter(tags=["Notifications, audit and account"])
 
 
 @router.get("/notifications")
-def notifications(unread: bool = False, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def notifications(unread: bool = False, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     query = select(Notification).where(
         Notification.user_id == user.id, Notification.organization_id == user.organization_id
     )
@@ -38,7 +38,7 @@ def notifications(unread: bool = False, user: User = Depends(current_user), db: 
 
 
 @router.post("/notifications/{record_id}/read")
-def read_notification(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def read_notification(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     item = scoped(db, Notification, record_id, user)
     if item.user_id != user.id:
         fail(404, "Notification not found.")
@@ -47,7 +47,7 @@ def read_notification(record_id: str, user: User = Depends(current_user), db: Se
 
 
 @router.get("/events")
-def events(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def events(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     user_id, organization_id, session_id = user.id, user.organization_id, request.state.session.id
     # Release the request transaction before the long-lived stream.
     db.commit()
@@ -96,7 +96,7 @@ def history(
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=200),
     user: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     admin(user)
     query = select(AuditLog).where(AuditLog.organization_id == user.organization_id)
@@ -117,7 +117,7 @@ def history(
 
 
 @router.get("/operations/queue")
-def queue(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def queue(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     admin(user)
     return [
         record_dict(item, {"payload", "result", "lease_token"})
@@ -136,7 +136,7 @@ class Profile(Input):
 
 
 @router.put("/profile")
-def profile(values: Profile, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def profile(values: Profile, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     if user.role == "worker":
         fail(403, "Ask your supervisor to update your workforce identity details.")
     before = {"name": user.name, "phone": user.phone}
