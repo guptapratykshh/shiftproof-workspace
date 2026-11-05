@@ -70,7 +70,7 @@ def parse_rows(content: bytes, filename: str):
 
 @router.post("/worker-imports/preview", status_code=201)
 async def preview(
-    file: UploadFile = File(...), user: User = Depends(current_user), db: Session = Depends(get_db)
+    file: UploadFile = File(...), user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     if user.role == "worker":
         fail(403, "Workforce management access is required.")
@@ -182,7 +182,7 @@ class Confirm(Input):
 
 @router.post("/worker-imports/{record_id}/confirm")
 def confirm(
-    record_id: str, values: Confirm, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: Confirm, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     item = scoped(db, ImportBatch, record_id, user)
     if item.created_by != user.id:
