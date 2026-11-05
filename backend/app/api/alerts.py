@@ -16,7 +16,7 @@ router = APIRouter(tags=["Critical alerts"])
 
 
 @router.get("/alerts")
-def alerts(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def alerts(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     return [
         record_dict(item)
         for item in db.scalars(service.alert_query(db, user).order_by(Alert.created_at.desc()).limit(200))
@@ -24,7 +24,7 @@ def alerts(user: User = Depends(current_user), db: Session = Depends(get_db)):
 
 
 @router.get("/alerts/{record_id}")
-def detail(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def detail(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     item = service.accessible_alert(db, user, record_id)
     return {
         **record_dict(item),
@@ -44,7 +44,7 @@ class ImmediateAlert(Input):
 
 
 @router.post("/alerts/immediate", status_code=201)
-def immediate(values: ImmediateAlert, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def immediate(values: ImmediateAlert, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     require_department(db, user, values.department_id, active=True)
     db.execute(update(User).where(User.id == user.id).values(updated_at=now()))
     if values.client_request_id:
@@ -83,7 +83,7 @@ class AlertAction(Input):
 
 @router.post("/alerts/{record_id}/actions")
 def action(
-    record_id: str, values: AlertAction, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: AlertAction, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     item = service.accessible_alert(db, user, record_id)
     if values.action == "acknowledge" and user.role == "organization" and item.assigned_to == user.id:
