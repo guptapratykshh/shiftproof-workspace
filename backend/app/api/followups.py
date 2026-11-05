@@ -14,7 +14,7 @@ router = APIRouter(tags=["Cross-department follow-up"])
 
 
 @router.get("/routing-departments")
-def destinations(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def destinations(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     if user.role == "worker":
         fail(403, "Supervisor review is required for routing.")
     return [
@@ -34,7 +34,7 @@ class Route(Input):
 
 
 @router.post("/follow-ups", status_code=201)
-def route(values: Route, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def route(values: Route, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     report = accessible_report(db, user, values.report_id, values.note)
     require_department(db, user, report.department_id, "review")
     destination = scoped(db, Department, values.receiving_department_id, user)
@@ -75,7 +75,7 @@ def route(values: Route, user: User = Depends(current_user), db: Session = Depen
 
 
 @router.get("/follow-ups")
-def followups(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def followups(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     if user.role == "worker":
         fail(403, "Supervisor access is required.")
     allowed = department_ids(db, user)
@@ -98,7 +98,7 @@ def followups(user: User = Depends(current_user), db: Session = Depends(get_db))
 
 @router.post("/follow-ups/{record_id}/assign", status_code=201)
 def assign(
-    record_id: str, values: TaskInput, user: User = Depends(current_user), db: Session = Depends(get_db)
+    record_id: str, values: TaskInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     from ..services.tasks import create_task
 
