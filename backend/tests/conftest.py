@@ -5,10 +5,9 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import event, text
-from sqlalchemy.orm import sessionmaker
 
 from app.config import get_settings
-from app.db import Base, get_db, make_engine
+from app.db import Base, get_db, make_engine, make_session_factory
 from app.main import app
 from app.models import Department, DepartmentMembership, Organization, Shift, Team, TeamMembership, User
 from app.security import hash_secret
@@ -17,10 +16,29 @@ PASSWORD = "Testing-account-123"
 PIN = "583719"
 
 
-@pytest.fixture
-def environment(tmp_path, monkeypatch):
-    url = os.environ.get("TEST_DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
+@pytest.fixture(scope="session")
+def mongo_test_engine():
+    url = os.environ.get("TEST_DATABASE_URL", "")
+    if not url.startswith(("mongodb://", "mongodb+srv://")):
+        yield None
+        return
     engine = make_engine(url)
+    if not engine.database.name.startswith("shiftproof_test_"):
+        raise ValueError("MongoDB tests require a dedicated shiftproof_test_ database")
+    if engine.database.list_collection_names():
+        raise ValueError("MongoDB test database must be empty")
+    engine.bootstrap()
+    try:
+        yield engine
+    finally:
+        engine.client.drop_database(engine.database.name)
+        engine.dispose()
+
+
+@pytest.fixture
+def environment(tmp_path, monkeypatch, mongo_test_engine):
+    url = os.environ.get("TEST_DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
+    engine = mongo_test_engine or make_engine(url)
     schema = f"test_{uuid4().hex}" if engine.dialect.name == "postgresql" else None
     if schema:
         with engine.begin() as connection:
@@ -32,8 +50,9 @@ def environment(tmp_path, monkeypatch):
             with connection.cursor() as cursor:
                 cursor.execute(f'SET search_path TO "{schema}"')
 
-    Base.metadata.create_all(engine)
-    factory = sessionmaker(engine, expire_on_commit=False)
+    if engine.dialect.name != "mongodb":
+        Base.metadata.create_all(engine)
+    factory = make_session_factory(engine)
 
     def session():
         with factory() as db:
@@ -51,6 +70,11 @@ def environment(tmp_path, monkeypatch):
     import app.worker as worker
 
     monkeypatch.setattr(worker, "SessionLocal", factory)
+    import app.api.platform as platform
+    import app.main as main
+
+    monkeypatch.setattr(platform, "SessionLocal", factory)
+    monkeypatch.setattr(main, "SessionLocal", factory)
     client = TestClient(app)
     yield SimpleNamespace(client=client, db=factory, worker=worker, tmp=tmp_path)
     client.close()
@@ -58,7 +82,11 @@ def environment(tmp_path, monkeypatch):
     if schema:
         with engine.begin() as connection:
             connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
-    engine.dispose()
+    if mongo_test_engine:
+        for name in engine.database.list_collection_names():
+            engine.database[name].delete_many({})
+    else:
+        engine.dispose()
 
 
 def login(client, role, email="", code="ORG-TEST", employee="W-01"):
