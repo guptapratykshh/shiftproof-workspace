@@ -294,6 +294,8 @@ export type Job = Base & {
     extraction_id?: string;
     fields?: ReportFields;
     asset_id?: string;
+    no_speech?: boolean;
+    script?: string;
   };
   available_at: string;
 };
