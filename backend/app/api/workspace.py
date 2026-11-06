@@ -217,14 +217,18 @@ def context(
 
 class Orientation(Input):
     step: int = Field(ge=1, le=5)
+    skipped: list[int] | None = None
 
 
 @router.put("/orientation")
-def orientation(values: Orientation, user: User = Depends(current_user)):
+def orientation(values: Orientation, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     if user.role != "supervisor":
         fail(403, "Supervisor orientation is only available to supervisors.")
-    user.profile = {**user.profile, "orientation_step": str(values.step)}
-    return {"step": values.step}
+    profile = {**user.profile, "orientation_step": str(values.step)}
+    if values.skipped is not None:
+        profile["orientation_skipped"] = values.skipped
+    user.profile = profile
+    return {"step": values.step, "skipped": profile.get("orientation_skipped", [])}
 
 
 @router.get("/departments/{record_id}/overview")

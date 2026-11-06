@@ -96,10 +96,18 @@ export function OrganizationProfile({ onSaved }: { onSaved?: () => void }) {
   );
 }
 
-export function DepartmentsPage({ embedded = false }: { embedded?: boolean }) {
+export function DepartmentsPage({
+  embedded = false,
+  focus,
+}: {
+  embedded?: boolean;
+  focus?: "departments" | "teams";
+}) {
   const { departments, teams } = useCatalog();
   const w = useWords();
   const { t } = usePreferences();
+  const showDepartments = !focus || focus === "departments";
+  const showTeams = !focus || focus === "teams";
   const [editor, setEditor] = useState<{
     kind: "department" | "team";
     item?: Department | Team;
@@ -138,118 +146,122 @@ export function DepartmentsPage({ embedded = false }: { embedded?: boolean }) {
           )}
         />
       )}
-      <div className="work-two-column">
-        <Panel
-          title="Departments"
-          action={
-            <button
-              className="button button-outline"
-              onClick={() => setEditor({ kind: "department" })}
-            >
-              <Plus size={16} />
-              {w("Create")}
-            </button>
-          }
-        >
-          <When loading={departments.isLoading} error={departments.error}>
-            {!departments.data?.length ? (
-              <Empty />
-            ) : (
-              departments.data.map((item) => (
-                <div className="work-list-row" key={item.id}>
-                  <div>
-                    <Link
-                      className="text-link"
-                      to={`/workspace/departments/${item.id}`}
-                    >
-                      <strong>{item.name}</strong>
-                    </Link>
-                    <p>{item.description}</p>
-                    <Status value={item.active ? "Active" : "Inactive"} />
+      <div className={focus ? "work-stack" : "work-two-column"}>
+        {showDepartments && (
+          <Panel
+            title="Departments"
+            action={
+              <button
+                className="button button-outline"
+                onClick={() => setEditor({ kind: "department" })}
+              >
+                <Plus size={16} />
+                {w("Create")}
+              </button>
+            }
+          >
+            <When loading={departments.isLoading} error={departments.error}>
+              {!departments.data?.length ? (
+                <Empty />
+              ) : (
+                departments.data.map((item) => (
+                  <div className="work-list-row" key={item.id}>
+                    <div>
+                      <Link
+                        className="text-link"
+                        to={`/workspace/departments/${item.id}`}
+                      >
+                        <strong>{item.name}</strong>
+                      </Link>
+                      <p>{item.description}</p>
+                      <Status value={item.active ? "Active" : "Inactive"} />
+                    </div>
+                    <div className="work-actions">
+                      <button
+                        className="text-button"
+                        onClick={() => setEditor({ kind: "department", item })}
+                      >
+                        {t("Edit", "संपादित करें")}
+                      </button>
+                      <ActionButton
+                        action={() =>
+                          put(`/departments/${item.id}`, {
+                            name: item.name,
+                            description: item.description,
+                            active: !item.active,
+                          })
+                        }
+                      >
+                        {w(item.active ? "Deactivate" : "Reactivate")}
+                      </ActionButton>
+                    </div>
                   </div>
-                  <div className="work-actions">
-                    <button
-                      className="text-button"
-                      onClick={() => setEditor({ kind: "department", item })}
-                    >
-                      {t("Edit", "संपादित करें")}
-                    </button>
-                    <ActionButton
-                      action={() =>
-                        put(`/departments/${item.id}`, {
-                          name: item.name,
-                          description: item.description,
-                          active: !item.active,
-                        })
-                      }
-                    >
-                      {w(item.active ? "Deactivate" : "Reactivate")}
-                    </ActionButton>
+                ))
+              )}
+            </When>
+          </Panel>
+        )}
+        {showTeams && (
+          <Panel
+            title={t("Teams and production lines", "टीम और उत्पादन लाइन")}
+            action={
+              <button
+                className="button button-outline"
+                onClick={() => setEditor({ kind: "team" })}
+              >
+                <Plus size={16} />
+                {w("Create")}
+              </button>
+            }
+          >
+            <When loading={teams.isLoading} error={teams.error}>
+              {!teams.data?.length ? (
+                <Empty />
+              ) : (
+                teams.data.map((item) => (
+                  <div className="work-list-row" key={item.id}>
+                    <div>
+                      <Link
+                        className="text-link"
+                        to={`/workspace/teams/${item.id}`}
+                      >
+                        <strong>{item.name}</strong>
+                      </Link>
+                      <p>
+                        {
+                          departments.data?.find(
+                            (d) => d.id === item.department_id,
+                          )?.name
+                        }
+                      </p>
+                      <Status value={item.active ? "Active" : "Inactive"} />
+                    </div>
+                    <div className="work-actions">
+                      <button
+                        className="text-button"
+                        onClick={() => setEditor({ kind: "team", item })}
+                      >
+                        {t("Edit", "संपादित करें")}
+                      </button>
+                      <ActionButton
+                        action={() =>
+                          put(`/teams/${item.id}`, {
+                            name: item.name,
+                            description: item.description,
+                            department_id: item.department_id,
+                            active: !item.active,
+                          })
+                        }
+                      >
+                        {w(item.active ? "Deactivate" : "Reactivate")}
+                      </ActionButton>
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
-          </When>
-        </Panel>
-        <Panel
-          title="Teams"
-          action={
-            <button
-              className="button button-outline"
-              onClick={() => setEditor({ kind: "team" })}
-            >
-              <Plus size={16} />
-              {w("Create")}
-            </button>
-          }
-        >
-          <When loading={teams.isLoading} error={teams.error}>
-            {!teams.data?.length ? (
-              <Empty />
-            ) : (
-              teams.data.map((item) => (
-                <div className="work-list-row" key={item.id}>
-                  <div>
-                    <Link
-                      className="text-link"
-                      to={`/workspace/teams/${item.id}`}
-                    >
-                      <strong>{item.name}</strong>
-                    </Link>
-                    <p>
-                      {
-                        departments.data?.find(
-                          (d) => d.id === item.department_id,
-                        )?.name
-                      }
-                    </p>
-                    <Status value={item.active ? "Active" : "Inactive"} />
-                  </div>
-                  <div className="work-actions">
-                    <button
-                      className="text-button"
-                      onClick={() => setEditor({ kind: "team", item })}
-                    >
-                      {t("Edit", "संपादित करें")}
-                    </button>
-                    <ActionButton
-                      action={() =>
-                        put(`/teams/${item.id}`, {
-                          name: item.name,
-                          description: item.description,
-                          department_id: item.department_id,
-                          active: !item.active,
-                        })
-                      }
-                    >
-                      {w(item.active ? "Deactivate" : "Reactivate")}
-                    </ActionButton>
-                  </div>
-                </div>
-              ))
-            )}
-          </When>
-        </Panel>
+                ))
+              )}
+            </When>
+          </Panel>
+        )}
       </div>
       {editor && (
         <Modal
@@ -261,13 +273,13 @@ export function DepartmentsPage({ embedded = false }: { embedded?: boolean }) {
             onSubmit={(values) =>
               editor.item
                 ? put(
-                    `/${editor.kind === "team" ? "teams" : "departments"}/${editor.item.id}`,
-                    { ...values, active: editor.item.active },
-                  )
+                  `/${editor.kind === "team" ? "teams" : "departments"}/${editor.item.id}`,
+                  { ...values, active: editor.item.active },
+                )
                 : post(
-                    `/${editor.kind === "team" ? "teams" : "departments"}`,
-                    values,
-                  )
+                  `/${editor.kind === "team" ? "teams" : "departments"}`,
+                  values,
+                )
             }
             onSuccess={() => setEditor(null)}
           />
@@ -374,8 +386,8 @@ function WeeklySchedule({
                       <p>
                         {members.length
                           ? [...new Map(members.map((p) => [p.id, p])).values()]
-                              .map((p) => p.name)
-                              .join(", ")
+                            .map((p) => p.name)
+                            .join(", ")
                           : t("No assigned coverage", "कोई जिम्मेदारी तय नहीं")}
                       </p>
                     </div>
@@ -470,9 +482,9 @@ export function ShiftsPage({ embedded = false }: { embedded?: boolean }) {
                         end > start
                           ? [[start, end]]
                           : [
-                              [start, 1440],
-                              [0, end],
-                            ];
+                            [start, 1440],
+                            [0, end],
+                          ];
                       return blocks.map(([from, to], index) => (
                         <span
                           key={index}
@@ -502,7 +514,7 @@ export function ShiftsPage({ embedded = false }: { embedded?: boolean }) {
                         {t(
                           day.label.slice(0, 3),
                           ["सोम", "मंगल", "बुध", "गुरु", "शुक्र", "शनि", "रवि"][
-                            Number(day.value)
+                          Number(day.value)
                           ],
                         )}
                       </span>
@@ -565,7 +577,7 @@ export function ShiftsPage({ embedded = false }: { embedded?: boolean }) {
                           a.department_id === department.id &&
                           a.shift_id === shift.id &&
                           a.starts_on <=
-                            new Date().toISOString().slice(0, 10) &&
+                          new Date().toISOString().slice(0, 10) &&
                           (!a.ends_on ||
                             a.ends_on >= new Date().toISOString().slice(0, 10)),
                       ) || [];
@@ -614,13 +626,13 @@ export function ShiftsPage({ embedded = false }: { embedded?: boolean }) {
                         >
                           {primary
                             ? t(
-                                "Primary assigned",
-                                "मुख्य पर्यवेक्षक निर्धारित",
-                              )
+                              "Primary assigned",
+                              "मुख्य पर्यवेक्षक निर्धारित",
+                            )
                             : t(
-                                "Primary shift coverage missing",
-                                "मुख्य शिफ्ट पर्यवेक्षक नहीं है",
-                              )}
+                              "Primary shift coverage missing",
+                              "मुख्य शिफ्ट पर्यवेक्षक नहीं है",
+                            )}
                         </p>
                         <p
                           className={!backup ? "work-warning" : "work-success"}
@@ -628,9 +640,9 @@ export function ShiftsPage({ embedded = false }: { embedded?: boolean }) {
                           {backup
                             ? t("Backup assigned", "बैकअप निर्धारित")
                             : t(
-                                "Backup shift coverage missing",
-                                "बैकअप शिफ्ट पर्यवेक्षक नहीं है",
-                              )}
+                              "Backup shift coverage missing",
+                              "बैकअप शिफ्ट पर्यवेक्षक नहीं है",
+                            )}
                         </p>
                       </article>
                     );
@@ -850,15 +862,15 @@ function PermissionForm({
         person
           ? []
           : [
-              { name: "name", label: "Full name", required: true },
-              {
-                name: "email",
-                label: "Official email",
-                type: "email",
-                required: true,
-              },
-              { name: "phone", label: "Contact number" },
-            ]
+            { name: "name", label: "Full name", required: true },
+            {
+              name: "email",
+              label: "Official email",
+              type: "email",
+              required: true,
+            },
+            { name: "phone", label: "Contact number" },
+          ]
       }
       onSubmit={(values) => {
         const payload = memberships
@@ -871,8 +883,8 @@ function PermissionForm({
           }));
         return person
           ? put(`/supervisors/${person.id}/permissions`, {
-              departments: payload,
-            })
+            departments: payload,
+          })
           : post("/supervisors/invite", { ...values, departments: payload });
       }}
       onSuccess={onSaved}
@@ -897,17 +909,17 @@ function PermissionForm({
                       setMemberships((current) =>
                         event.target.checked
                           ? [
-                              ...current.filter(
-                                (m) => m.department_id !== dept.id,
-                              ),
-                              {
-                                department_id: dept.id,
-                                primary: false,
-                                backup: false,
-                                permissions: ["view"],
-                                active: true,
-                              } as (typeof memberships)[number],
-                            ]
+                            ...current.filter(
+                              (m) => m.department_id !== dept.id,
+                            ),
+                            {
+                              department_id: dept.id,
+                              primary: false,
+                              backup: false,
+                              permissions: ["view"],
+                              active: true,
+                            } as (typeof memberships)[number],
+                          ]
                           : current.filter((m) => m.department_id !== dept.id),
                       )
                     }
@@ -916,19 +928,81 @@ function PermissionForm({
                 </label>
                 {membership && (
                   <>
-                    <div className="work-checks">
-                      {(["primary", "backup"] as const).map((flag) => (
-                        <label className="check-field" key={flag}>
+                    <div className="supervisor-role-picker">
+                      <div className="supervisor-role-label">
+                        {t(
+                          "Supervisory role for this department:",
+                          "इस विभाग में पर्यवेक्षक की भूमिका:",
+                        )}
+                      </div>
+                      <div className="supervisor-role-options">
+                        <label className="check-field radio-role-option">
                           <input
-                            type="checkbox"
-                            checked={membership[flag]}
-                            onChange={(event) =>
-                              update(dept.id, flag, event.target.checked)
-                            }
+                            type="radio"
+                            name={`role-${dept.id}`}
+                            checked={membership.primary}
+                            onChange={() => {
+                              update(dept.id, "primary", true);
+                              update(dept.id, "backup", false);
+                            }}
                           />
-                          {w(flag === "primary" ? "Primary" : "Backup")}
+                          <div>
+                            <strong>
+                              {t("Primary supervisor", "मुख्य पर्यवेक्षक")}
+                            </strong>
+                            <small>
+                              {t(
+                                "First responder for departmental alerts, approvals & handovers",
+                                "अलर्ट, मंज़ूरी और हैंडओवर के मुख्य उत्तरदायी",
+                              )}
+                            </small>
+                          </div>
                         </label>
-                      ))}
+                        <label className="check-field radio-role-option">
+                          <input
+                            type="radio"
+                            name={`role-${dept.id}`}
+                            checked={membership.backup}
+                            onChange={() => {
+                              update(dept.id, "primary", false);
+                              update(dept.id, "backup", true);
+                            }}
+                          />
+                          <div>
+                            <strong>
+                              {t("Backup supervisor", "बैकअप पर्यवेक्षक")}
+                            </strong>
+                            <small>
+                              {t(
+                                "Standby if primary does not acknowledge within 10 minutes",
+                                "यदि मुख्य पर्यवेक्षक 10 मिनट में न आए तो स्टैंडबाई",
+                              )}
+                            </small>
+                          </div>
+                        </label>
+                        <label className="check-field radio-role-option">
+                          <input
+                            type="radio"
+                            name={`role-${dept.id}`}
+                            checked={!membership.primary && !membership.backup}
+                            onChange={() => {
+                              update(dept.id, "primary", false);
+                              update(dept.id, "backup", false);
+                            }}
+                          />
+                          <div>
+                            <strong>
+                              {t("General supervisor", "सामान्य पर्यवेक्षक")}
+                            </strong>
+                            <small>
+                              {t(
+                                "Standard departmental access without shift lead responsibility",
+                                "बिना शिफ्ट लीड जिम्मेदारी के सामान्य अनुमतियाँ",
+                              )}
+                            </small>
+                          </div>
+                        </label>
+                      </div>
                     </div>
                     <div className="work-checks">
                       {permissions.map((permission) => (
@@ -945,8 +1019,8 @@ function PermissionForm({
                                 event.target.checked
                                   ? [...membership.permissions, permission]
                                   : membership.permissions.filter(
-                                      (p) => p !== permission,
-                                    ),
+                                    (p) => p !== permission,
+                                  ),
                               )
                             }
                           />
@@ -1285,7 +1359,7 @@ export function PoliciesPage({ section = "all" }: { section?: string }) {
               className="button button-outline"
               onClick={() => setModal("escalation")}
             >
-              {w("Save changes")}
+              {t("Configure rules", "नियम कॉन्फ़िगर करें")}
             </button>
           }
         >
@@ -1551,137 +1625,137 @@ export function PoliciesPage({ section = "all" }: { section?: string }) {
               },
               ...(modal === "mapping"
                 ? ([
-                    {
-                      name: "supervisor_id",
-                      label: "Primary",
-                      type: "select",
-                      required: true,
-                      options: options(activeSupervisors),
-                    },
-                    {
-                      name: "backup_id",
-                      label: "Backup",
-                      type: "select",
-                      options: options(activeSupervisors),
-                    },
-                    {
-                      name: "team_id",
-                      label: "Team",
-                      type: "select",
-                      options: options(teams.data?.filter((t) => t.active)),
-                    },
-                    {
-                      name: "shift_id",
-                      label: "Shift",
-                      type: "select",
-                      options: options(shifts.data?.filter((s) => s.active)),
-                    },
-                    { name: "machine", label: "Machine / equipment" },
-                    { name: "area", label: "Work area" },
-                    { name: "category", label: "Category" },
-                  ] as FieldSpec[])
+                  {
+                    name: "supervisor_id",
+                    label: "Primary",
+                    type: "select",
+                    required: true,
+                    options: options(activeSupervisors),
+                  },
+                  {
+                    name: "backup_id",
+                    label: "Backup",
+                    type: "select",
+                    options: options(activeSupervisors),
+                  },
+                  {
+                    name: "team_id",
+                    label: "Team",
+                    type: "select",
+                    options: options(teams.data?.filter((t) => t.active)),
+                  },
+                  {
+                    name: "shift_id",
+                    label: "Shift",
+                    type: "select",
+                    options: options(shifts.data?.filter((s) => s.active)),
+                  },
+                  { name: "machine", label: "Machine / equipment" },
+                  { name: "area", label: "Work area" },
+                  { name: "category", label: "Category" },
+                ] as FieldSpec[])
                 : modal === "escalation"
                   ? ([
-                      {
-                        name: "acknowledge_minutes",
-                        label: t(
-                          "Primary response window (minutes)",
-                          "मुख्य पर्यवेक्षक की समय सीमा (मिनट)",
-                        ),
-                        type: "number",
-                        min: 1,
-                        max: 240,
-                        defaultValue: 10,
-                      },
-                      {
-                        name: "backup_minutes",
-                        label: t(
-                          "Backup response window (minutes)",
-                          "बैकअप की समय सीमा (मिनट)",
-                        ),
-                        type: "number",
-                        min: 1,
-                        max: 240,
-                        defaultValue: 10,
-                      },
-                      {
-                        name: "channels",
-                        label: t(
-                          "Critical alert channels",
-                          "गंभीर अलर्ट के माध्यम",
-                        ),
-                        type: "multi",
-                        defaultValue: ["in_app"],
-                        options: [
-                          {
-                            value: "in_app",
-                            label: t(
-                              "In-app (always enabled)",
-                              "ऐप में (हमेशा चालू)",
-                            ),
-                          },
-                          {
-                            value: "email",
-                            label: t(
-                              "Email to responsible supervisors and administrators",
-                              "जिम्मेदार पर्यवेक्षकों और प्रशासकों को ईमेल",
-                            ),
-                          },
-                        ],
-                      },
-                      {
-                        name: "escalation_recipient_id",
-                        label: "Organization administrator",
-                        type: "select",
-                        options: options(
-                          supervisors.data?.filter(
-                            (s) => s.role === "organization" && s.active,
+                    {
+                      name: "acknowledge_minutes",
+                      label: t(
+                        "Primary response window (minutes)",
+                        "मुख्य पर्यवेक्षक की समय सीमा (मिनट)",
+                      ),
+                      type: "number",
+                      min: 1,
+                      max: 240,
+                      defaultValue: 10,
+                    },
+                    {
+                      name: "backup_minutes",
+                      label: t(
+                        "Backup response window (minutes)",
+                        "बैकअप की समय सीमा (मिनट)",
+                      ),
+                      type: "number",
+                      min: 1,
+                      max: 240,
+                      defaultValue: 10,
+                    },
+                    {
+                      name: "channels",
+                      label: t(
+                        "Critical alert channels",
+                        "गंभीर अलर्ट के माध्यम",
+                      ),
+                      type: "multi",
+                      defaultValue: ["in_app"],
+                      options: [
+                        {
+                          value: "in_app",
+                          label: t(
+                            "In-app (always enabled)",
+                            "ऐप में (हमेशा चालू)",
                           ),
+                        },
+                        {
+                          value: "email",
+                          label: t(
+                            "Email to responsible supervisors and administrators",
+                            "जिम्मेदार पर्यवेक्षकों और प्रशासकों को ईमेल",
+                          ),
+                        },
+                      ],
+                    },
+                    {
+                      name: "escalation_recipient_id",
+                      label: "Organization administrator",
+                      type: "select",
+                      options: options(
+                        supervisors.data?.filter(
+                          (s) => s.role === "organization" && s.active,
                         ),
-                      },
-                    ] as FieldSpec[])
+                      ),
+                    },
+                  ] as FieldSpec[])
                   : ([
-                      {
-                        name: "reason",
-                        label: "Reason",
-                        type: "textarea",
-                        required: true,
-                      },
-                      {
-                        name: "hours",
-                        label: "Hours",
-                        type: "number",
-                        min: 1,
-                        max: 24,
-                        defaultValue: 8,
-                      },
-                    ] as FieldSpec[])),
+                    {
+                      name: "reason",
+                      label: "Reason",
+                      type: "textarea",
+                      required: true,
+                    },
+                    {
+                      name: "hours",
+                      label: "Hours",
+                      type: "number",
+                      min: 1,
+                      max: 24,
+                      defaultValue: 8,
+                    },
+                  ] as FieldSpec[])),
             ]}
             onSubmit={(values) =>
               modal === "mapping"
                 ? post("/responsibilities", {
-                    ...values,
-                    backup_id: nullable(values.backup_id),
-                    team_id: nullable(values.team_id),
-                    shift_id: nullable(values.shift_id),
-                  })
+                  ...values,
+                  backup_id: nullable(values.backup_id),
+                  team_id: nullable(values.team_id),
+                  shift_id: nullable(values.shift_id),
+                })
                 : modal === "escalation"
                   ? put("/escalation-rules", {
-                      ...values,
-                      acknowledge_minutes: Number(values.acknowledge_minutes),
-                      backup_minutes: Number(values.backup_minutes),
-                      escalation_recipient_id: nullable(
-                        values.escalation_recipient_id,
-                      ),
-                      channels: Array.from(
-                        new Set(["in_app", ...list(values.channels)]),
-                      ),
-                      active: true,
-                    })
+                    ...values,
+                    acknowledge_minutes: Number(values.acknowledge_minutes),
+                    backup_minutes: Number(values.backup_minutes),
+                    escalation_recipient_id: nullable(
+                      values.escalation_recipient_id,
+                    ),
+                    channels: Array.from(
+                      new Set(["in_app", ...list(values.channels)]),
+                    ),
+                    active: true,
+                  })
                   : post("/takeovers", {
-                      ...values,
-                      hours: Number(values.hours),
-                    })
+                    ...values,
+                    hours: Number(values.hours),
+                  })
             }
             onSuccess={() => setModal(null)}
           />
@@ -1722,23 +1796,16 @@ export function OnboardingPage() {
       <When loading={state.isLoading} error={state.error}>
         {state.data && (
           <>
-            <div className="onboarding-steps">
-              {state.data.steps.map((item) => (
-                <button
-                  key={item.number}
-                  className={step === item.number ? "step-current" : ""}
-                  onClick={() => setSelected(item.number)}
-                >
-                  <span>
-                    {item.status === "completed" ? (
-                      <CheckCircle2 size={17} />
-                    ) : (
-                      String(item.number).padStart(2, "0")
-                    )}
-                  </span>
+            <div className="org-stepper-container">
+              <div className="org-stepper-meta">
+                <div>
                   <strong>
                     {t(
-                      item.name,
+                      `Step ${step} of 9: `,
+                      `चरण ${step} / 9: `,
+                    )}
+                    {t(
+                      state.data.steps[step - 1]?.name || "",
                       [
                         "संगठन प्रोफ़ाइल",
                         "विभाग",
@@ -1749,20 +1816,66 @@ export function OnboardingPage() {
                         "एस्केलेशन नियम",
                         "गोपनीयता नीति",
                         "अंतिम समीक्षा",
-                      ][item.number - 1],
+                      ][step - 1],
                     )}
                   </strong>
-                  <Status value={item.status} />
-                </button>
-              ))}
+                </div>
+                <div>
+                  {state.data.steps.filter((s) => s.status === "completed").length} / 9 {t("completed", "पूर्ण")}
+                </div>
+              </div>
+              <div className="org-progress-track">
+                <div
+                  className="org-progress-fill"
+                  style={{
+                    width: `${(state.data.steps.filter((s) => s.status === "completed").length / 9) * 100}%`,
+                  }}
+                />
+              </div>
+              <div className="org-stepper-chips">
+                {state.data.steps.map((item) => {
+                  const isCurrent = step === item.number;
+                  const isCompleted = item.status === "completed";
+                  return (
+                    <button
+                      key={item.number}
+                      type="button"
+                      className={`org-step-chip ${isCurrent ? "active" : ""} ${isCompleted ? "completed" : ""}`}
+                      onClick={() => setSelected(item.number)}
+                    >
+                      <span className="org-step-num">
+                        {isCompleted ? <CheckCircle2 size={13} /> : item.number}
+                      </span>
+                      <span>
+                        {t(
+                          item.name,
+                          [
+                            "संगठन प्रोफ़ाइल",
+                            "विभाग",
+                            "टीम और उत्पादन",
+                            "शिफ्ट संरचना",
+                            "पर्यवेक्षक",
+                            "जिम्मेदारी",
+                            "एस्केलेशन",
+                            "गोपनीयता",
+                            "समीक्षा",
+                          ][item.number - 1],
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <section className="onboarding-content">
               {step === 1 ? (
                 <Panel title="Organization profile">
                   <OrganizationProfile />
                 </Panel>
-              ) : step === 2 || step === 3 ? (
-                <DepartmentsPage embedded />
+              ) : step === 2 ? (
+                <DepartmentsPage embedded focus="departments" />
+              ) : step === 3 ? (
+                <DepartmentsPage embedded focus="teams" />
               ) : step === 4 ? (
                 <ShiftsPage embedded />
               ) : step === 5 ? (
@@ -1804,43 +1917,56 @@ export function OnboardingPage() {
               )}
             </section>
             <div className="work-actions onboarding-actions">
-              {step < 9 && (
-                <ActionButton
-                  className="button button-primary"
-                  action={async () => {
-                    await post("/organization/onboarding", { step });
-                    setSelected(step + 1);
-                  }}
-                >
-                  {w("Save & continue")}
-                </ActionButton>
-              )}
-              {step > 5 && (
-                <ActionButton
-                  action={async () => {
-                    await post("/organization/onboarding", {
-                      step,
-                      skip: true,
-                    });
-                    setSelected(Math.min(9, step + 1));
-                  }}
-                >
-                  {w("Skip optional step")}
-                </ActionButton>
-              )}
-              {state.data.can_activate && !state.data.active && (
-                <ActionButton
-                  className="button button-primary"
-                  action={() => post("/organization/activate")}
-                >
-                  {w("Activate organization")}
-                </ActionButton>
-              )}
-              {state.data.active && (
-                <Link to="/workspace" className="button button-primary">
-                  {t("Open workspace", "कार्यस्थल खोलें")}
-                </Link>
-              )}
+              <div>
+                {step > 1 && (
+                  <button
+                    type="button"
+                    className="button button-outline"
+                    onClick={() => setSelected(step - 1)}
+                  >
+                    ← {w("Previous")}
+                  </button>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                {step > 5 && (
+                  <ActionButton
+                    action={async () => {
+                      await post("/organization/onboarding", {
+                        step,
+                        skip: true,
+                      });
+                      setSelected(Math.min(9, step + 1));
+                    }}
+                  >
+                    {w("Skip optional step")}
+                  </ActionButton>
+                )}
+                {step < 9 && (
+                  <ActionButton
+                    className="button button-primary"
+                    action={async () => {
+                      await post("/organization/onboarding", { step });
+                      setSelected(step + 1);
+                    }}
+                  >
+                    {w("Save & continue")} →
+                  </ActionButton>
+                )}
+                {state.data.can_activate && !state.data.active && (
+                  <ActionButton
+                    className="button button-primary"
+                    action={() => post("/organization/activate")}
+                  >
+                    {w("Activate organization")}
+                  </ActionButton>
+                )}
+                {state.data.active && (
+                  <Link to="/workspace" className="button button-primary">
+                    {t("Open workspace", "कार्यस्थल खोलें")}
+                  </Link>
+                )}
+              </div>
             </div>
           </>
         )}

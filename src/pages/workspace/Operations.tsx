@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { useCatalog } from "../../components/workspace/Workspace";
 import {
   ActionButton,
@@ -96,6 +97,9 @@ export function ShiftContext() {
 
 export function SupervisorOrientation() {
   const session = useSession((state) => state.session)!;
+  const setSession = useSession((state) => state.setSession);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { departments, teams } = useCatalog();
   const { t } = usePreferences();
   if (
@@ -103,9 +107,32 @@ export function SupervisorOrientation() {
     session.user.profile.orientation_completed_at
   )
     return null;
-  const step = Number(session.user.profile.orientation_step || 1);
+
+  const currentSavedStep = Math.min(
+    5,
+    Math.max(1, Number(session.user.profile.orientation_step || 1)),
+  );
+  const [selectedStep, setSelectedStep] = useState<number | null>(null);
+  const step = selectedStep || currentSavedStep;
+
+  const rawSkipped: number[] = session.user.profile.orientation_skipped
+    ? String(session.user.profile.orientation_skipped)
+      .split(",")
+      .map((s) => Number(s.trim()))
+      .filter(Boolean)
+    : [];
+  const [skipped, setSkipped] = useState<number[]>(rawSkipped);
+  const [completed, setCompleted] = useState<number[]>(() => {
+    const list: number[] = [];
+    for (let i = 1; i < currentSavedStep; i++) {
+      if (!rawSkipped.includes(i)) list.push(i);
+    }
+    return list;
+  });
+
   const steps = [
     {
+      number: 1,
       title: t("Your departments and permissions", "आपके विभाग और अनुमतियाँ"),
       description: session.memberships
         .filter((m) => m.active)
@@ -117,6 +144,7 @@ export function SupervisorOrientation() {
       href: "/workspace/settings",
     },
     {
+      number: 2,
       title: t("Review your teams and people", "अपनी टीम और लोगों को देखें"),
       description:
         teams.data?.map((team) => team.name).join(" · ") ||
@@ -127,6 +155,7 @@ export function SupervisorOrientation() {
       href: "/workspace/workforce",
     },
     {
+      number: 3,
       title: t("Confirm shift coverage", "शिफ्ट की जिम्मेदारी जाँचें"),
       description: t(
         "Review worker schedules and your primary or backup responsibilities.",
@@ -135,6 +164,7 @@ export function SupervisorOrientation() {
       href: "/workspace/shifts",
     },
     {
+      number: 4,
       title: t("Read incoming context", "आने वाला संदर्भ पढ़ें"),
       description: t(
         "Confirm receipt of the handover and each critical item separately. Open work keeps its owner until explicitly reassigned.",
@@ -143,6 +173,7 @@ export function SupervisorOrientation() {
       href: "/workspace/handovers",
     },
     {
+      number: 5,
       title: t(
         "Start with what needs attention",
         "ध्यान देने वाले विषय से शुरू करें",
@@ -154,25 +185,159 @@ export function SupervisorOrientation() {
       href: "/workspace/attention",
     },
   ];
+
   const current = steps[step - 1];
+
+  const isLastAction = (actingStep: number, isSkipping: boolean) => {
+    const newCompleted = new Set(completed);
+    const newSkipped = new Set(skipped);
+    if (isSkipping) {
+      newSkipped.add(actingStep);
+      newCompleted.delete(actingStep);
+    } else {
+      newCompleted.add(actingStep);
+      newSkipped.delete(actingStep);
+    }
+    const allHandled = [1, 2, 3, 4, 5].every(
+      (n) => newCompleted.has(n) || newSkipped.has(n),
+    );
+    return allHandled || actingStep >= 5;
+  };
+
+  const finishOrientation = async () => {
+    await post("/orientation/complete");
+    if (session) {
+      setSession({
+        ...session,
+        user: {
+          ...session.user,
+          profile: {
+            ...session.user.profile,
+            orientation_completed_at: new Date().toISOString(),
+          },
+        },
+      });
+    }
+    void queryClient.invalidateQueries({ queryKey: ["session"] });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    navigate("/workspace");
+  };
+
+  const handleContinue = async () => {
+    const newCompleted = Array.from(new Set([...completed, step]));
+    const newSkipped = skipped.filter((s) => s !== step);
+    setCompleted(newCompleted);
+    setSkipped(newSkipped);
+
+    if (isLastAction(step, false)) {
+      await finishOrientation();
+    } else {
+      const nextStep = Math.min(5, step + 1);
+      await put("/orientation", { step: nextStep, skipped: newSkipped });
+      if (session) {
+        setSession({
+          ...session,
+          user: {
+            ...session.user,
+            profile: {
+              ...session.user.profile,
+              orientation_step: String(nextStep),
+              orientation_skipped: newSkipped.join(","),
+            },
+          },
+        });
+      }
+      setSelectedStep(nextStep);
+    }
+  };
+
+  const handleSkip = async () => {
+    const newSkipped = Array.from(new Set([...skipped, step]));
+    const newCompleted = completed.filter((s) => s !== step);
+    setSkipped(newSkipped);
+    setCompleted(newCompleted);
+
+    if (isLastAction(step, true)) {
+      await finishOrientation();
+    } else {
+      const nextStep = Math.min(5, step + 1);
+      await put("/orientation", { step: nextStep, skipped: newSkipped });
+      if (session) {
+        setSession({
+          ...session,
+          user: {
+            ...session.user,
+            profile: {
+              ...session.user.profile,
+              orientation_step: String(nextStep),
+              orientation_skipped: newSkipped.join(","),
+            },
+          },
+        });
+      }
+      setSelectedStep(nextStep);
+    }
+  };
+
+  const isFinalStep = isLastAction(step, false);
+
   return (
     <Panel title={`${step} / 5 · ${current.title}`}>
+      <div
+        className="onboarding-steps"
+        style={{
+          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          marginBottom: "16px",
+        }}
+      >
+        {steps.map((s) => {
+          const isComp = completed.includes(s.number);
+          const isSkip = skipped.includes(s.number);
+          const isCurr = step === s.number;
+          return (
+            <button
+              key={s.number}
+              type="button"
+              className={isCurr ? "step-current" : ""}
+              onClick={() => setSelectedStep(s.number)}
+            >
+              <span>
+                {isComp ? (
+                  <CheckCircle2 size={16} />
+                ) : (
+                  String(s.number).padStart(2, "0")
+                )}
+              </span>
+              <strong>{s.title}</strong>
+              <Status
+                value={
+                  isComp
+                    ? "completed"
+                    : isSkip
+                      ? "skipped"
+                      : isCurr
+                        ? "active"
+                        : "pending"
+                }
+              />
+            </button>
+          );
+        })}
+      </div>
       <p>{current.description}</p>
       <div className="work-actions">
         <Link className="button button-outline" to={current.href}>
           {t("Review this area", "यह भाग देखें")}
         </Link>
-        <ActionButton
-          action={() =>
-            step === 5
-              ? post("/orientation/complete")
-              : put("/orientation", { step: step + 1 })
-          }
-        >
-          {t("Save and continue", "सहेजें और जारी रखें")}
+        <ActionButton action={handleContinue}>
+          {isFinalStep
+            ? t("Complete & go to overview", "पूरा करें और अवलोकन पर जाएँ")
+            : t("Save and continue", "सहेजें और जारी रखें")}
         </ActionButton>
-        <ActionButton action={() => post("/orientation/complete")}>
-          {t("Skip introduction", "परिचय छोड़ें")}
+        <ActionButton action={handleSkip}>
+          {isFinalStep
+            ? t("Skip & go to overview", "छोड़ें और अवलोकन पर जाएँ")
+            : t("Skip step", "चरण छोड़ें")}
         </ActionButton>
       </div>
       <p className="work-note">

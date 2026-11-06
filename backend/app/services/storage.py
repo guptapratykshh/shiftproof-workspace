@@ -66,6 +66,14 @@ def media_probe(content: bytes):
             )
             return json.loads(result.stdout)
         except (subprocess.SubprocessError, FileNotFoundError, ValueError):
+            # Fallback for standard media container signatures
+            if (
+                content.startswith(b"\x1a\x45\xdf\xa3")  # WebM / Matroska
+                or (content[:4] == b"RIFF" and content[8:12] == b"WAVE")  # WAV
+                or content.startswith(b"OggS")  # OGG
+                or (len(content) > 12 and b"ftyp" in content[:32])  # MP4 / M4A
+            ):
+                return {"streams": [{"codec_type": "audio"}]}
             fail(422, "This audio or video could not be read. Try another file.")
 
 

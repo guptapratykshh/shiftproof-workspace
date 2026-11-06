@@ -405,17 +405,17 @@ export type FieldSpec = {
   name: string;
   label: string;
   type?:
-    | "text"
-    | "email"
-    | "password"
-    | "number"
-    | "date"
-    | "datetime-local"
-    | "time"
-    | "textarea"
-    | "select"
-    | "multi"
-    | "checkbox";
+  | "text"
+  | "email"
+  | "password"
+  | "number"
+  | "date"
+  | "datetime-local"
+  | "time"
+  | "textarea"
+  | "select"
+  | "multi"
+  | "checkbox";
   required?: boolean;
   options?: Option[];
   defaultValue?: string | number | boolean | string[];
@@ -425,6 +425,79 @@ export type FieldSpec = {
   wide?: boolean;
 };
 export type FormValues = Record<string, string | string[] | boolean>;
+export function MultiSelectPills({
+  name,
+  id,
+  options = [],
+  defaultValue = [],
+  onChange,
+}: {
+  name: string;
+  id: string;
+  options?: { label: string; value: string }[];
+  defaultValue?: string | string[];
+  onChange?: () => void;
+}) {
+  const initial = Array.isArray(defaultValue)
+    ? defaultValue.map(String)
+    : defaultValue
+      ? [String(defaultValue)]
+      : [];
+  const [selected, setSelected] = useState<string[]>(initial);
+
+  const toggle = (val: string) => {
+    setSelected((prev) => {
+      const next = prev.includes(val)
+        ? prev.filter((v) => v !== val)
+        : [...prev, val];
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    onChange?.();
+  }, [selected]);
+
+  return (
+    <div className="multi-pill-group" id={id} role="group">
+      {selected.map((val) => (
+        <input key={val} type="hidden" name={name} value={val} />
+      ))}
+      <div className="multi-pills-list">
+        {options.map((option) => {
+          const isSelected = selected.includes(option.value);
+          return (
+            <button
+              key={option.value}
+              type="button"
+              className={`pill-option ${isSelected ? "pill-option-selected" : ""}`}
+              onClick={() => toggle(option.value)}
+              aria-pressed={isSelected}
+            >
+              <span className="pill-check-indicator">
+                {isSelected ? "✓" : "+"}
+              </span>
+              <span>{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="multi-pills-actions">
+        <button
+          type="button"
+          onClick={() => setSelected(options.map((o) => o.value))}
+        >
+          Select all
+        </button>
+        <span aria-hidden="true">·</span>
+        <button type="button" onClick={() => setSelected([])}>
+          Clear all
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function FieldsForm({
   fields,
   submitLabel = "Save changes",
@@ -442,18 +515,29 @@ export function FieldsForm({
   const id = useId();
   const queryClient = useQueryClient();
   const [saved, setSaved] = useState(false);
-  const mutation = useMutation({
-    mutationFn: onSubmit,
-    onSuccess: (result) => {
-      void queryClient.invalidateQueries();
-      setSaved(true);
-      onSuccess?.(result);
-    },
-  });
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSaved(false);
-    const data = new FormData(event.currentTarget);
+  const [isDirty, setIsDirty] = useState(false);
+  const formRef = useRef<HTMLFormElement | null>(null);
+
+  const getBaselineValues = (): FormValues => {
+    const values: FormValues = {};
+    fields.forEach((field) => {
+      values[field.name] =
+        field.type === "checkbox"
+          ? Boolean(field.defaultValue)
+          : field.type === "multi"
+            ? Array.isArray(field.defaultValue)
+              ? field.defaultValue.map(String)
+              : field.defaultValue
+                ? [String(field.defaultValue)]
+                : []
+            : String(field.defaultValue ?? "");
+    });
+    return values;
+  };
+
+  const baselineRef = useRef<FormValues>(getBaselineValues());
+
+  const extractValues = (data: FormData): FormValues => {
     const values: FormValues = {};
     fields.forEach((field) => {
       values[field.name] =
@@ -461,12 +545,98 @@ export function FieldsForm({
           ? data.has(field.name)
           : field.type === "multi"
             ? data.getAll(field.name).map(String)
-            : String(data.get(field.name) || "");
+            : String(data.get(field.name) ?? "");
     });
+    return values;
+  };
+
+  const areValuesEqual = (a: FormValues, b: FormValues): boolean => {
+    for (const field of fields) {
+      const valA = a[field.name];
+      const valB = b[field.name];
+      if (field.type === "multi") {
+        const arrA = Array.isArray(valA) ? valA : [];
+        const arrB = Array.isArray(valB) ? valB : [];
+        if (arrA.length !== arrB.length) return false;
+        const sA = [...arrA].sort();
+        const sB = [...arrB].sort();
+        if (sA.some((v, i) => v !== sB[i])) return false;
+      } else {
+        if ((valA ?? "") !== (valB ?? "")) return false;
+      }
+    }
+    return true;
+  };
+
+  const serializeForm = (form: HTMLFormElement): string => {
+    const entries: string[] = [];
+    const data = new FormData(form);
+    for (const [k, v] of data.entries()) {
+      entries.push(`${k}=${v}`);
+    }
+    return entries.sort().join("&");
+  };
+
+  const initialSnapshotRef = useRef<string>("");
+
+  useEffect(() => {
+    const baseline = getBaselineValues();
+    baselineRef.current = baseline;
+    if (formRef.current) {
+      initialSnapshotRef.current = serializeForm(formRef.current);
+      const current = extractValues(new FormData(formRef.current));
+      setIsDirty(!areValuesEqual(baseline, current));
+    } else {
+      setIsDirty(false);
+    }
+  }, [JSON.stringify(fields.map((f) => [f.name, f.defaultValue]))]);
+
+  const mutation = useMutation({
+    mutationFn: onSubmit,
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries();
+      setSaved(true);
+      if (formRef.current) {
+        baselineRef.current = extractValues(new FormData(formRef.current));
+        initialSnapshotRef.current = serializeForm(formRef.current);
+      }
+      setIsDirty(false);
+      onSuccess?.(result);
+    },
+  });
+
+  const checkDirty = (form: HTMLFormElement) => {
+    const current = extractValues(new FormData(form));
+    const fieldsMatch = areValuesEqual(baselineRef.current, current);
+    const snapMatch =
+      !initialSnapshotRef.current ||
+      serializeForm(form) === initialSnapshotRef.current;
+    setIsDirty(!fieldsMatch || !snapMatch);
+    setSaved(false);
+  };
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaved(false);
+    const data = new FormData(event.currentTarget);
+    const values = extractValues(data);
     mutation.mutate(values);
   };
+
+  const isSaveAction =
+    submitLabel.toLowerCase().includes("save") ||
+    submitLabel.toLowerCase().includes("सहेज");
+
+  const isSubmitDisabled = mutation.isPending || (isSaveAction && !isDirty);
+
   return (
-    <form className="work-form" onSubmit={submit}>
+    <form
+      ref={formRef}
+      className="work-form"
+      onSubmit={submit}
+      onChange={(e) => checkDirty(e.currentTarget)}
+      onInput={(e) => checkDirty(e.currentTarget)}
+    >
       <div className="work-form-grid">
         {fields.map((field) => {
           const props = {
@@ -479,7 +649,7 @@ export function FieldsForm({
           };
           return (
             <div
-              className={`form-field ${field.wide || field.type === "textarea" || field.type === "multi" ? "field-wide" : ""}`}
+              className={`form-field ${field.type === "checkbox" ? "form-field-checkbox" : ""} ${field.wide || field.type === "textarea" || field.type === "multi" ? "field-wide" : ""}`}
               key={field.name}
             >
               {field.type === "checkbox" ? (
@@ -489,28 +659,40 @@ export function FieldsForm({
                     type="checkbox"
                     defaultChecked={Boolean(field.defaultValue)}
                   />
-                  {w(field.label)}
+                  <span className="check-label">{w(field.label)}</span>
                 </label>
+              ) : field.type === "multi" ? (
+                <>
+                  <label htmlFor={props.id}>
+                    {w(field.label)}
+                    {field.required && <span aria-hidden="true"> *</span>}
+                  </label>
+                  <MultiSelectPills
+                    name={field.name}
+                    id={props.id}
+                    options={field.options}
+                    defaultValue={field.defaultValue as string | string[]}
+                    onChange={() => {
+                      if (formRef.current) checkDirty(formRef.current);
+                    }}
+                  />
+                </>
               ) : (
                 <>
                   <label htmlFor={props.id}>
                     {w(field.label)}
                     {field.required && <span aria-hidden="true"> *</span>}
                   </label>
-                  {field.type === "select" || field.type === "multi" ? (
+                  {field.type === "select" ? (
                     <select
                       {...props}
-                      multiple={field.type === "multi"}
                       defaultValue={
-                        (field.defaultValue as string | string[]) ||
-                        (field.type === "multi" ? [] : "")
+                        (field.defaultValue as string) || ""
                       }
                     >
-                      {field.type === "select" && (
-                        <option value="">
-                          {w(field.required ? "Select an option" : "None")}
-                        </option>
-                      )}
+                      <option value="">
+                        {w(field.required ? "Select an option" : "None")}
+                      </option>
                       {field.options?.map((option) => (
                         <option key={option.value} value={option.value}>
                           {w(option.label)}
@@ -554,7 +736,7 @@ export function FieldsForm({
       <button
         type="submit"
         className="button button-primary"
-        disabled={mutation.isPending}
+        disabled={isSubmitDisabled}
       >
         {mutation.isPending && <LoaderCircle size={17} className="spin" />}
         {w(mutation.isPending ? "Saving…" : submitLabel)}
@@ -625,10 +807,10 @@ export function formatDate(
 ) {
   return value
     ? new Intl.DateTimeFormat(document.documentElement.lang, {
-        dateStyle: "medium",
-        ...(withTime ? { timeStyle: "short" as const } : {}),
-        timeZone: timezone,
-      }).format(new Date(value))
+      dateStyle: "medium",
+      ...(withTime ? { timeStyle: "short" as const } : {}),
+      timeZone: timezone,
+    }).format(new Date(value))
     : "—";
 }
 export const options = (

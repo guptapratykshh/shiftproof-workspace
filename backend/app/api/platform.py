@@ -146,6 +146,6 @@ def profile(values: Profile, user: User = Depends(current_user), db: Session = D
 
 
 @router.post("/orientation/complete")
-def orientation(user: User = Depends(current_user)):
+def orientation(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     user.profile = {**user.profile, "orientation_completed_at": now().isoformat()}
     return {"status": "complete"}
