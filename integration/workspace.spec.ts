@@ -547,10 +547,12 @@ test("immediate report keeps one alert and published handover has separate recei
   await page
     .getByRole("button", { name: "Publish version", exact: true })
     .click();
-  await page
+  const publishButton = page
     .getByRole("dialog")
-    .getByRole("button", { name: "Save changes" })
-    .click();
+    .getByRole("button", { name: "Publish version", exact: true });
+  // Initial publication must work with the existing draft and prefilled reason.
+  await expect(publishButton).toBeEnabled();
+  await publishButton.click();
   await expect(
     page.getByText("published", { exact: true }).first(),
   ).toBeVisible();

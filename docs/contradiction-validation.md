@@ -56,6 +56,12 @@ The final service review found 12 retained failed jobs across the live database:
 
 The live URL uses the existing temporary Cloudflare tunnel and depends on the Mac and local services remaining available. This work did not deploy a separate static Sites frontend or create permanent hosting. QA credentials and raw live session state remain in ignored, private runtime files and are not included in this report.
 
+## Integration with updated main
+
+The changes were rebased without conflicts onto `54c1a63`, which includes the merged UI revamp (PR #1) and worker voice workflow (PR #2), on `feat/contradiction-qa-integration`.
+
+Post-rebase validation passed: 131 backend tests (four Mongo-only skips), all 42 contradiction Chrome cases, all 17 public Chrome cases, and the production TypeScript/Vite build. The workspace/mail run passed nine cases and exposed one regression from the merged save-button behavior: initial handover publication was disabled until prefilled text was edited. Giving that action the explicit **Publish version** label preserves the save-change guard while allowing publication of an unchanged draft. The browser test now asserts that this button is enabled without editing; its production-build rerun passed, including separate handover and critical-item receipts. The earlier Atlas and real-provider results above were recorded before this rebase and were not repeated for this integration.
+
 ## Re-run
 
 ```sh
