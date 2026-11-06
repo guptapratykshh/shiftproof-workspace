@@ -261,13 +261,13 @@ export function DepartmentsPage({ embedded = false }: { embedded?: boolean }) {
             onSubmit={(values) =>
               editor.item
                 ? put(
-                    `/${editor.kind === "team" ? "teams" : "departments"}/${editor.item.id}`,
-                    { ...values, active: editor.item.active },
-                  )
+                  `/${editor.kind === "team" ? "teams" : "departments"}/${editor.item.id}`,
+                  { ...values, active: editor.item.active },
+                )
                 : post(
-                    `/${editor.kind === "team" ? "teams" : "departments"}`,
-                    values,
-                  )
+                  `/${editor.kind === "team" ? "teams" : "departments"}`,
+                  values,
+                )
             }
             onSuccess={() => setEditor(null)}
           />
@@ -374,8 +374,8 @@ function WeeklySchedule({
                       <p>
                         {members.length
                           ? [...new Map(members.map((p) => [p.id, p])).values()]
-                              .map((p) => p.name)
-                              .join(", ")
+                            .map((p) => p.name)
+                            .join(", ")
                           : t("No assigned coverage", "कोई जिम्मेदारी तय नहीं")}
                       </p>
                     </div>
@@ -470,9 +470,9 @@ export function ShiftsPage({ embedded = false }: { embedded?: boolean }) {
                         end > start
                           ? [[start, end]]
                           : [
-                              [start, 1440],
-                              [0, end],
-                            ];
+                            [start, 1440],
+                            [0, end],
+                          ];
                       return blocks.map(([from, to], index) => (
                         <span
                           key={index}
@@ -502,7 +502,7 @@ export function ShiftsPage({ embedded = false }: { embedded?: boolean }) {
                         {t(
                           day.label.slice(0, 3),
                           ["सोम", "मंगल", "बुध", "गुरु", "शुक्र", "शनि", "रवि"][
-                            Number(day.value)
+                          Number(day.value)
                           ],
                         )}
                       </span>
@@ -565,7 +565,7 @@ export function ShiftsPage({ embedded = false }: { embedded?: boolean }) {
                           a.department_id === department.id &&
                           a.shift_id === shift.id &&
                           a.starts_on <=
-                            new Date().toISOString().slice(0, 10) &&
+                          new Date().toISOString().slice(0, 10) &&
                           (!a.ends_on ||
                             a.ends_on >= new Date().toISOString().slice(0, 10)),
                       ) || [];
@@ -614,13 +614,13 @@ export function ShiftsPage({ embedded = false }: { embedded?: boolean }) {
                         >
                           {primary
                             ? t(
-                                "Primary assigned",
-                                "मुख्य पर्यवेक्षक निर्धारित",
-                              )
+                              "Primary assigned",
+                              "मुख्य पर्यवेक्षक निर्धारित",
+                            )
                             : t(
-                                "Primary shift coverage missing",
-                                "मुख्य शिफ्ट पर्यवेक्षक नहीं है",
-                              )}
+                              "Primary shift coverage missing",
+                              "मुख्य शिफ्ट पर्यवेक्षक नहीं है",
+                            )}
                         </p>
                         <p
                           className={!backup ? "work-warning" : "work-success"}
@@ -628,9 +628,9 @@ export function ShiftsPage({ embedded = false }: { embedded?: boolean }) {
                           {backup
                             ? t("Backup assigned", "बैकअप निर्धारित")
                             : t(
-                                "Backup shift coverage missing",
-                                "बैकअप शिफ्ट पर्यवेक्षक नहीं है",
-                              )}
+                              "Backup shift coverage missing",
+                              "बैकअप शिफ्ट पर्यवेक्षक नहीं है",
+                            )}
                         </p>
                       </article>
                     );
@@ -850,15 +850,15 @@ function PermissionForm({
         person
           ? []
           : [
-              { name: "name", label: "Full name", required: true },
-              {
-                name: "email",
-                label: "Official email",
-                type: "email",
-                required: true,
-              },
-              { name: "phone", label: "Contact number" },
-            ]
+            { name: "name", label: "Full name", required: true },
+            {
+              name: "email",
+              label: "Official email",
+              type: "email",
+              required: true,
+            },
+            { name: "phone", label: "Contact number" },
+          ]
       }
       onSubmit={(values) => {
         const payload = memberships
@@ -871,8 +871,8 @@ function PermissionForm({
           }));
         return person
           ? put(`/supervisors/${person.id}/permissions`, {
-              departments: payload,
-            })
+            departments: payload,
+          })
           : post("/supervisors/invite", { ...values, departments: payload });
       }}
       onSuccess={onSaved}
@@ -897,17 +897,17 @@ function PermissionForm({
                       setMemberships((current) =>
                         event.target.checked
                           ? [
-                              ...current.filter(
-                                (m) => m.department_id !== dept.id,
-                              ),
-                              {
-                                department_id: dept.id,
-                                primary: false,
-                                backup: false,
-                                permissions: ["view"],
-                                active: true,
-                              } as (typeof memberships)[number],
-                            ]
+                            ...current.filter(
+                              (m) => m.department_id !== dept.id,
+                            ),
+                            {
+                              department_id: dept.id,
+                              primary: false,
+                              backup: false,
+                              permissions: ["view"],
+                              active: true,
+                            } as (typeof memberships)[number],
+                          ]
                           : current.filter((m) => m.department_id !== dept.id),
                       )
                     }
@@ -945,8 +945,8 @@ function PermissionForm({
                                 event.target.checked
                                   ? [...membership.permissions, permission]
                                   : membership.permissions.filter(
-                                      (p) => p !== permission,
-                                    ),
+                                    (p) => p !== permission,
+                                  ),
                               )
                             }
                           />
@@ -1285,7 +1285,7 @@ export function PoliciesPage({ section = "all" }: { section?: string }) {
               className="button button-outline"
               onClick={() => setModal("escalation")}
             >
-              {w("Save changes")}
+              {t("Configure rules", "नियम कॉन्फ़िगर करें")}
             </button>
           }
         >
@@ -1551,137 +1551,137 @@ export function PoliciesPage({ section = "all" }: { section?: string }) {
               },
               ...(modal === "mapping"
                 ? ([
-                    {
-                      name: "supervisor_id",
-                      label: "Primary",
-                      type: "select",
-                      required: true,
-                      options: options(activeSupervisors),
-                    },
-                    {
-                      name: "backup_id",
-                      label: "Backup",
-                      type: "select",
-                      options: options(activeSupervisors),
-                    },
-                    {
-                      name: "team_id",
-                      label: "Team",
-                      type: "select",
-                      options: options(teams.data?.filter((t) => t.active)),
-                    },
-                    {
-                      name: "shift_id",
-                      label: "Shift",
-                      type: "select",
-                      options: options(shifts.data?.filter((s) => s.active)),
-                    },
-                    { name: "machine", label: "Machine / equipment" },
-                    { name: "area", label: "Work area" },
-                    { name: "category", label: "Category" },
-                  ] as FieldSpec[])
+                  {
+                    name: "supervisor_id",
+                    label: "Primary",
+                    type: "select",
+                    required: true,
+                    options: options(activeSupervisors),
+                  },
+                  {
+                    name: "backup_id",
+                    label: "Backup",
+                    type: "select",
+                    options: options(activeSupervisors),
+                  },
+                  {
+                    name: "team_id",
+                    label: "Team",
+                    type: "select",
+                    options: options(teams.data?.filter((t) => t.active)),
+                  },
+                  {
+                    name: "shift_id",
+                    label: "Shift",
+                    type: "select",
+                    options: options(shifts.data?.filter((s) => s.active)),
+                  },
+                  { name: "machine", label: "Machine / equipment" },
+                  { name: "area", label: "Work area" },
+                  { name: "category", label: "Category" },
+                ] as FieldSpec[])
                 : modal === "escalation"
                   ? ([
-                      {
-                        name: "acknowledge_minutes",
-                        label: t(
-                          "Primary response window (minutes)",
-                          "मुख्य पर्यवेक्षक की समय सीमा (मिनट)",
-                        ),
-                        type: "number",
-                        min: 1,
-                        max: 240,
-                        defaultValue: 10,
-                      },
-                      {
-                        name: "backup_minutes",
-                        label: t(
-                          "Backup response window (minutes)",
-                          "बैकअप की समय सीमा (मिनट)",
-                        ),
-                        type: "number",
-                        min: 1,
-                        max: 240,
-                        defaultValue: 10,
-                      },
-                      {
-                        name: "channels",
-                        label: t(
-                          "Critical alert channels",
-                          "गंभीर अलर्ट के माध्यम",
-                        ),
-                        type: "multi",
-                        defaultValue: ["in_app"],
-                        options: [
-                          {
-                            value: "in_app",
-                            label: t(
-                              "In-app (always enabled)",
-                              "ऐप में (हमेशा चालू)",
-                            ),
-                          },
-                          {
-                            value: "email",
-                            label: t(
-                              "Email to responsible supervisors and administrators",
-                              "जिम्मेदार पर्यवेक्षकों और प्रशासकों को ईमेल",
-                            ),
-                          },
-                        ],
-                      },
-                      {
-                        name: "escalation_recipient_id",
-                        label: "Organization administrator",
-                        type: "select",
-                        options: options(
-                          supervisors.data?.filter(
-                            (s) => s.role === "organization" && s.active,
+                    {
+                      name: "acknowledge_minutes",
+                      label: t(
+                        "Primary response window (minutes)",
+                        "मुख्य पर्यवेक्षक की समय सीमा (मिनट)",
+                      ),
+                      type: "number",
+                      min: 1,
+                      max: 240,
+                      defaultValue: 10,
+                    },
+                    {
+                      name: "backup_minutes",
+                      label: t(
+                        "Backup response window (minutes)",
+                        "बैकअप की समय सीमा (मिनट)",
+                      ),
+                      type: "number",
+                      min: 1,
+                      max: 240,
+                      defaultValue: 10,
+                    },
+                    {
+                      name: "channels",
+                      label: t(
+                        "Critical alert channels",
+                        "गंभीर अलर्ट के माध्यम",
+                      ),
+                      type: "multi",
+                      defaultValue: ["in_app"],
+                      options: [
+                        {
+                          value: "in_app",
+                          label: t(
+                            "In-app (always enabled)",
+                            "ऐप में (हमेशा चालू)",
                           ),
+                        },
+                        {
+                          value: "email",
+                          label: t(
+                            "Email to responsible supervisors and administrators",
+                            "जिम्मेदार पर्यवेक्षकों और प्रशासकों को ईमेल",
+                          ),
+                        },
+                      ],
+                    },
+                    {
+                      name: "escalation_recipient_id",
+                      label: "Organization administrator",
+                      type: "select",
+                      options: options(
+                        supervisors.data?.filter(
+                          (s) => s.role === "organization" && s.active,
                         ),
-                      },
-                    ] as FieldSpec[])
+                      ),
+                    },
+                  ] as FieldSpec[])
                   : ([
-                      {
-                        name: "reason",
-                        label: "Reason",
-                        type: "textarea",
-                        required: true,
-                      },
-                      {
-                        name: "hours",
-                        label: "Hours",
-                        type: "number",
-                        min: 1,
-                        max: 24,
-                        defaultValue: 8,
-                      },
-                    ] as FieldSpec[])),
+                    {
+                      name: "reason",
+                      label: "Reason",
+                      type: "textarea",
+                      required: true,
+                    },
+                    {
+                      name: "hours",
+                      label: "Hours",
+                      type: "number",
+                      min: 1,
+                      max: 24,
+                      defaultValue: 8,
+                    },
+                  ] as FieldSpec[])),
             ]}
             onSubmit={(values) =>
               modal === "mapping"
                 ? post("/responsibilities", {
-                    ...values,
-                    backup_id: nullable(values.backup_id),
-                    team_id: nullable(values.team_id),
-                    shift_id: nullable(values.shift_id),
-                  })
+                  ...values,
+                  backup_id: nullable(values.backup_id),
+                  team_id: nullable(values.team_id),
+                  shift_id: nullable(values.shift_id),
+                })
                 : modal === "escalation"
                   ? put("/escalation-rules", {
-                      ...values,
-                      acknowledge_minutes: Number(values.acknowledge_minutes),
-                      backup_minutes: Number(values.backup_minutes),
-                      escalation_recipient_id: nullable(
-                        values.escalation_recipient_id,
-                      ),
-                      channels: Array.from(
-                        new Set(["in_app", ...list(values.channels)]),
-                      ),
-                      active: true,
-                    })
+                    ...values,
+                    acknowledge_minutes: Number(values.acknowledge_minutes),
+                    backup_minutes: Number(values.backup_minutes),
+                    escalation_recipient_id: nullable(
+                      values.escalation_recipient_id,
+                    ),
+                    channels: Array.from(
+                      new Set(["in_app", ...list(values.channels)]),
+                    ),
+                    active: true,
+                  })
                   : post("/takeovers", {
-                      ...values,
-                      hours: Number(values.hours),
-                    })
+                    ...values,
+                    hours: Number(values.hours),
+                  })
             }
             onSuccess={() => setModal(null)}
           />

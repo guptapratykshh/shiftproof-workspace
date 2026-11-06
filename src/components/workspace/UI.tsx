@@ -405,17 +405,17 @@ export type FieldSpec = {
   name: string;
   label: string;
   type?:
-    | "text"
-    | "email"
-    | "password"
-    | "number"
-    | "date"
-    | "datetime-local"
-    | "time"
-    | "textarea"
-    | "select"
-    | "multi"
-    | "checkbox";
+  | "text"
+  | "email"
+  | "password"
+  | "number"
+  | "date"
+  | "datetime-local"
+  | "time"
+  | "textarea"
+  | "select"
+  | "multi"
+  | "checkbox";
   required?: boolean;
   options?: Option[];
   defaultValue?: string | number | boolean | string[];
@@ -442,18 +442,29 @@ export function FieldsForm({
   const id = useId();
   const queryClient = useQueryClient();
   const [saved, setSaved] = useState(false);
-  const mutation = useMutation({
-    mutationFn: onSubmit,
-    onSuccess: (result) => {
-      void queryClient.invalidateQueries();
-      setSaved(true);
-      onSuccess?.(result);
-    },
-  });
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSaved(false);
-    const data = new FormData(event.currentTarget);
+  const [isDirty, setIsDirty] = useState(false);
+  const formRef = useRef<HTMLFormElement | null>(null);
+
+  const getBaselineValues = (): FormValues => {
+    const values: FormValues = {};
+    fields.forEach((field) => {
+      values[field.name] =
+        field.type === "checkbox"
+          ? Boolean(field.defaultValue)
+          : field.type === "multi"
+            ? Array.isArray(field.defaultValue)
+              ? field.defaultValue.map(String)
+              : field.defaultValue
+                ? [String(field.defaultValue)]
+                : []
+            : String(field.defaultValue ?? "");
+    });
+    return values;
+  };
+
+  const baselineRef = useRef<FormValues>(getBaselineValues());
+
+  const extractValues = (data: FormData): FormValues => {
     const values: FormValues = {};
     fields.forEach((field) => {
       values[field.name] =
@@ -461,12 +472,81 @@ export function FieldsForm({
           ? data.has(field.name)
           : field.type === "multi"
             ? data.getAll(field.name).map(String)
-            : String(data.get(field.name) || "");
+            : String(data.get(field.name) ?? "");
     });
+    return values;
+  };
+
+  const areValuesEqual = (a: FormValues, b: FormValues): boolean => {
+    for (const field of fields) {
+      const valA = a[field.name];
+      const valB = b[field.name];
+      if (field.type === "multi") {
+        const arrA = Array.isArray(valA) ? valA : [];
+        const arrB = Array.isArray(valB) ? valB : [];
+        if (arrA.length !== arrB.length) return false;
+        const sA = [...arrA].sort();
+        const sB = [...arrB].sort();
+        if (sA.some((v, i) => v !== sB[i])) return false;
+      } else {
+        if ((valA ?? "") !== (valB ?? "")) return false;
+      }
+    }
+    return true;
+  };
+
+  useEffect(() => {
+    const baseline = getBaselineValues();
+    baselineRef.current = baseline;
+    if (formRef.current) {
+      const current = extractValues(new FormData(formRef.current));
+      setIsDirty(!areValuesEqual(baseline, current));
+    } else {
+      setIsDirty(false);
+    }
+  }, [JSON.stringify(fields.map((f) => [f.name, f.defaultValue]))]);
+
+  const mutation = useMutation({
+    mutationFn: onSubmit,
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries();
+      setSaved(true);
+      if (formRef.current) {
+        baselineRef.current = extractValues(new FormData(formRef.current));
+      }
+      setIsDirty(false);
+      onSuccess?.(result);
+    },
+  });
+
+  const checkDirty = (form: HTMLFormElement) => {
+    const current = extractValues(new FormData(form));
+    setIsDirty(!areValuesEqual(baselineRef.current, current));
+    setSaved(false);
+  };
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaved(false);
+    const data = new FormData(event.currentTarget);
+    const values = extractValues(data);
     mutation.mutate(values);
   };
+
+  const isSaveAction =
+    submitLabel.toLowerCase().includes("save") ||
+    submitLabel.toLowerCase().includes("सहेज");
+
+  const isSubmitDisabled = mutation.isPending || (isSaveAction && !isDirty);
+
   return (
-    <form className="work-form" onSubmit={submit}>
+    <form
+      ref={formRef}
+      className="work-form"
+      onSubmit={submit}
+      onChange={(e) => checkDirty(e.currentTarget)}
+      onInput={(e) => checkDirty(e.currentTarget)}
+    >
       <div className="work-form-grid">
         {fields.map((field) => {
           const props = {
@@ -554,7 +634,7 @@ export function FieldsForm({
       <button
         type="submit"
         className="button button-primary"
-        disabled={mutation.isPending}
+        disabled={isSubmitDisabled}
       >
         {mutation.isPending && <LoaderCircle size={17} className="spin" />}
         {w(mutation.isPending ? "Saving…" : submitLabel)}
@@ -625,10 +705,10 @@ export function formatDate(
 ) {
   return value
     ? new Intl.DateTimeFormat(document.documentElement.lang, {
-        dateStyle: "medium",
-        ...(withTime ? { timeStyle: "short" as const } : {}),
-        timeZone: timezone,
-      }).format(new Date(value))
+      dateStyle: "medium",
+      ...(withTime ? { timeStyle: "short" as const } : {}),
+      timeZone: timezone,
+    }).format(new Date(value))
     : "—";
 }
 export const options = (

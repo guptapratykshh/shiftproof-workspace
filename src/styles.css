@@ -103,6 +103,48 @@ input,
 select {
   font: inherit;
 }
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: var(--input);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b7aec9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px 16px;
+  padding-right: 38px !important;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+}
+:root[data-theme="light"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236c657d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+select option {
+  background-color: var(--surface);
+  color: var(--text);
+  padding: 8px 12px;
+}
+select optgroup {
+  background-color: var(--surface);
+  color: var(--muted);
+}
+select[multiple] {
+  background-image: none !important;
+  padding-right: 12px !important;
+}
+.scene-select select {
+  background-image: none !important;
+}
+select:hover:not(:disabled) {
+  border-color: var(--primary);
+}
+select:focus,
+select:focus-visible {
+  border-color: var(--primary);
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
 button,
 a,
 input,
@@ -874,7 +916,7 @@ button {
   width: 100%;
   min-height: var(--control-height);
   border: 1px solid var(--border-strong);
-  background: var(--input);
+  background-color: var(--input);
   border-radius: var(--radius-control);
   padding: 11px 13px;
   color: var(--text);
@@ -883,7 +925,19 @@ button {
   transition: border-color 0.15s;
 }
 .form-field select {
-  padding-right: 25px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: var(--input);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b7aec9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px 16px;
+  padding-right: 40px !important;
+  cursor: pointer;
+}
+:root[data-theme="light"] .form-field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236c657d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 .form-field input::placeholder {
   color: var(--muted);
@@ -2154,10 +2208,29 @@ textarea {
   min-height: 44px;
   padding: 11px 12px;
   color: var(--text);
-  background: var(--input);
+  background-color: var(--input);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
   font-size: 14px;
+}
+.workspace select,
+.work-modal select,
+.work-form select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: var(--input);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b7aec9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px 16px;
+  padding-right: 40px !important;
+  cursor: pointer;
+}
+:root[data-theme="light"] .workspace select,
+:root[data-theme="light"] .work-modal select,
+:root[data-theme="light"] .work-form select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236c657d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 .workspace textarea,
 .work-modal textarea {
