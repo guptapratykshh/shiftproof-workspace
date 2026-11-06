@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { CheckCircle2, Headphones, Plus, ShieldAlert } from "lucide-react";
+import { CheckCircle2, Plus, ShieldAlert } from "lucide-react";
 import { useCatalog } from "../../components/workspace/Workspace";
+import { VoicePlayback } from "../../components/workspace/VoicePlayback";
 import {
   ActionButton,
   Empty,
-  ErrorNotice,
   FieldsForm,
   Modal,
   PageTitle,
@@ -18,10 +18,10 @@ import {
   options,
   useWords,
 } from "../../components/workspace/UI";
-import { api, evidenceUrl, post, put } from "../../lib/api";
+import { api, post, put } from "../../lib/api";
 import { useSession } from "../../lib/session";
 import { usePreferences } from "../../lib/preferences";
-import type { Handover, Job } from "../../lib/types";
+import type { Handover } from "../../lib/types";
 
 export function HandoversPage() {
   const { id } = useParams();
@@ -34,35 +34,11 @@ export function HandoversPage() {
   const [creating, setCreating] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [versionNumber, setVersionNumber] = useState<number | null>(null);
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [audio, setAudio] = useState("");
-  const [audioError, setAudioError] = useState<unknown>(null);
   const data = useQuery<Handover | Handover[]>({
     queryKey: ["handovers", id],
     queryFn: () =>
       id ? api<Handover>(`/handovers/${id}`) : api<Handover[]>("/handovers"),
   });
-  const job = useQuery({
-    queryKey: ["job", jobId],
-    queryFn: () => api<Job>(`/jobs/${jobId}`),
-    enabled: !!jobId,
-    refetchInterval: (query) =>
-      ["succeeded", "failed"].includes(query.state.data?.status || "")
-        ? false
-        : 2000,
-  });
-  useEffect(() => {
-    if (job.data?.result.asset_id)
-      void evidenceUrl(job.data.result.asset_id)
-        .then(setAudio)
-        .catch(setAudioError);
-  }, [job.data?.result.asset_id]);
-  useEffect(
-    () => () => {
-      if (audio) URL.revokeObjectURL(audio);
-    },
-    [audio],
-  );
   const item = id ? (data.data as Handover | undefined) : undefined;
   const version =
     item?.versions?.find((v) => v.number === versionNumber) ||
@@ -175,8 +151,6 @@ export function HandoversPage() {
                       value={version.number}
                       onChange={(event) => {
                         setVersionNumber(Number(event.target.value));
-                        setAudio("");
-                        setJobId(null);
                       }}
                     >
                       {item.versions?.map((v) => (
@@ -268,27 +242,18 @@ export function HandoversPage() {
                           {w("Confirm receipt")}
                         </ActionButton>
                       ))}
-                    <ActionButton
-                      action={async () => {
-                        setAudioError(null);
-                        const result = await post<Job>(
-                          `/handover-audio/${version.id}`,
-                        );
-                        setJobId(result.id);
+                    <VoicePlayback
+                      key={`${version.id}:${session.user.preferences.speech_language}`}
+                      endpoint={`/handover-audio/${version.id}`}
+                      body={{
+                        language:
+                          session.user.preferences.speech_language === "en-IN"
+                            ? "en-IN"
+                            : "auto",
                       }}
-                    >
-                      <Headphones size={17} />
-                      {t("Listen to this version", "यह संस्करण सुनें")}
-                    </ActionButton>
+                      label={t("Listen to this version", "यह संस्करण सुनें")}
+                    />
                   </div>
-                  {jobId && (
-                    <p className="work-note">
-                      {w(job.data?.status || "Processing")}
-                    </p>
-                  )}
-                  {job.data?.error && <ErrorNotice error={job.data.error} />}
-                  {!!audioError && <ErrorNotice error={audioError} />}
-                  {audio && <audio controls src={audio} />}
                 </>
               ) : (
                 <>
