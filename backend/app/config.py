@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     gnani_api_key: str = ""
     gnani_stt_model: str = "prisma-v3.0"
     gnani_tts_model: str = "timbre-v3.0"
+    gnani_tts_voice: str = "Shivani"
+    gnani_tts_speed: float = Field(default=1.0, ge=0.85, le=1.15)
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
     max_upload_bytes: int = 25 * 1024 * 1024
