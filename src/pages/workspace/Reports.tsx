@@ -30,6 +30,7 @@ import type {
   Task,
 } from "../../lib/types";
 import { categories } from "./Reporting";
+import { claimTextFields, claimStatusFields } from "../../components/workspace/ClaimFields";
 import { TaskForm } from "./Tasks";
 
 export function ReportsPage() {
@@ -279,6 +280,7 @@ function Facts({ fields }: { fields: ReportFields }) {
     action_taken: "Action already taken",
     safety_implication: "Safety implication",
     quality_implication: "Quality implication",
+    ...Object.fromEntries([...claimTextFields, ...claimStatusFields].map(({key, label}) => [key, label])),
   };
   return (
     <dl className="work-definition">
@@ -820,6 +822,15 @@ export function ReportDetailPage() {
                         label: key.replaceAll("_", " "),
                         defaultValue: latest.fields[key] || "",
                       })),
+                      ...claimTextFields.map(({ key, label }) => ({
+                        name: key, label, defaultValue: latest.fields[key] || "",
+                      })),
+                      ...claimStatusFields.map(({ key, label, values }) => ({
+                        name: key, label, type: "select" as const,
+                        defaultValue: latest.fields[key] || "",
+                        options: [{ value: "", label: t("Not stated / unsure", "नहीं बताया / अनिश्चित") },
+                          ...values.map(value => ({ value, label: w(value) }))],
+                      })),
                       {
                         name: "reason",
                         label: "Reason",
@@ -850,6 +861,8 @@ export function ReportDetailPage() {
                               values.operational_status || null,
                             ...Object.fromEntries(
                               [
+                                ...claimTextFields.map(field => field.key),
+                                ...claimStatusFields.map(field => field.key),
                                 "machine",
                                 "work_area",
                                 "batch",
@@ -999,6 +1012,9 @@ export function ConflictsPage() {
             <Panel>
               <Status value={detail.status} />
               <h2>{detail.title}</h2>
+              <div className="work-tags">
+                {detail.findings?.map(finding => <Status key={finding.category} value={finding.severity} />)}
+              </div>
               <p className="work-copy">{detail.discrepancy}</p>
               {detail.resolution && (
                 <p className="instruction-box">{detail.resolution}</p>

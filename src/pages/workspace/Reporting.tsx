@@ -11,6 +11,7 @@ import {
   WandSparkles,
 } from "lucide-react";
 import { useCatalog } from "../../components/workspace/Workspace";
+import { ClaimFields } from "../../components/workspace/ClaimFields";
 import {
   VoicePlayback,
   useOnline,
@@ -969,7 +970,7 @@ export function ReportComposer() {
                   [
                     { key: "machine", label: "Machine / equipment" },
                     { key: "work_area", label: "Work area" },
-                    { key: "batch", label: "Batch / order" },
+                    { key: "batch", label: "Batch ID" },
                     { key: "quantity", label: "Quantity" },
                     { key: "unit", label: "Unit" },
                     { key: "operational_status", label: "Operational status" },
@@ -994,6 +995,7 @@ export function ReportComposer() {
                     />
                   </label>
                 ))}
+                <ClaimFields fields={fields} setField={setField} />
                 <label className="form-field">
                   {w("Team")}
                   <select

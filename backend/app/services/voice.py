@@ -43,6 +43,14 @@ def report_script(text: str, fields: ReportFields, language: str, immediate_safe
         "action_taken": ("Action already taken", "की गई कार्रवाई"),
         "safety_implication": ("Safety concern", "सुरक्षा का विषय"),
         "quality_implication": ("Quality concern", "गुणवत्ता का विषय"),
+        "order": ("Order", "ऑर्डर"), "task_reference": ("Task", "कार्य"),
+        "product": ("Product", "उत्पाद"), "reference_period": ("Reporting period", "रिपोर्ट की अवधि"),
+        "observation_time": ("Observation time", "देखने का समय"),
+        "quantity_basis": ("Counting basis", "गिनती का आधार"),
+        "quality_status": ("Quality status", "गुणवत्ता की स्थिति"),
+        "dispatch_status": ("Dispatch status", "डिस्पैच की स्थिति"),
+        "machine_status": ("Machine status", "मशीन की स्थिति"),
+        "task_status": ("Task status", "कार्य की स्थिति"),
     }
     for key, value in fields.model_dump().items():
         if key in {"category", "uncertainty", "suggested_task_id"}:

@@ -8,10 +8,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
 from ..db import get_db, now
-from ..models import Clarification, Conflict, ConflictReport, Report, ReportReview, ReportTaskLink, Task, User
+from ..models import Clarification, Conflict, ConflictReport, Organization, Report, ReportReview, ReportTaskLink, Task, User
 from ..schemas import Input, ReportInput
 from ..security import current_user, department_ids, fail, require_department, scoped
 from ..services import reports as service
+from ..services.contradictions import compare
 from ..services.common import audit, notify, record_dict
 
 router = APIRouter(tags=["Reports and clarification"])
@@ -110,6 +111,7 @@ def correct(
         values.report.occurred_at,
     ) != (item.department_id, item.team_id, item.shift_id, item.occurred_at):
         fail(422, "A correction preserves its original department, team, shift and occurrence time.")
+    service.lock_comparison_context(db, user, item.department_id)
     version = service.append_version(db, user, item, values.report, values.reason)
     service.detect_conflicts(db, item, version)
     if values.report.immediate_safety and not item.immediate_safety:
@@ -352,7 +354,18 @@ def conflicts(user: User = Depends(current_user), db: Session = Depends(get_db, 
                 .where(Report.author_id == user.id)
             )
         )
-    return [record_dict(item) for item in db.scalars(query.order_by(Conflict.created_at.desc()).limit(200))]
+    items = []
+    review_departments = department_ids(db, user, "review") if user.role == "supervisor" else []
+    for item in db.scalars(query.order_by(Conflict.created_at.desc()).limit(200)):
+        value = record_dict(item)
+        if item.department_id not in review_departments:
+            # Comparison values and supervisor notes contain the other worker's
+            # private report. The detail route has its own access/purpose gate.
+            value.update(title="Related reports need comparison",
+                         discrepancy="A supervisor is reviewing related reports. Respond to your own clarification request.",
+                         resolution="")
+        items.append(value)
+    return items
 
 
 @router.get("/conflicts/{record_id}")
@@ -368,7 +381,15 @@ def conflict_detail(
     for link in db.scalars(select(ConflictReport).where(ConflictReport.conflict_id == item.id)):
         report = service.accessible_report(db, user, link.report_id, purpose)
         sources.append({"linked_version": link.version_number, **service.report_detail(db, user, report)})
-    return {**record_dict(item), "reports": sources}
+    findings = []
+    if len(sources) == 2:
+        a, b = sources
+        va = next((v for v in a["versions"] if v["number"] == a["linked_version"]), None)
+        vb = next((v for v in b["versions"] if v["number"] == b["linked_version"]), None)
+        if va and vb:
+            findings = compare(va["fields"], vb["fields"], db.get(Report, a["id"]), db.get(Report, b["id"]),
+                               db.get(Organization, user.organization_id).timezone)
+    return {**record_dict(item), "reports": sources, "findings": findings}
 
 
 class Resolution(Input):

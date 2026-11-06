@@ -176,7 +176,12 @@ def store_asset(
         retention_until=now() + timedelta(days=retention),
     )
     db.add(item)
-    db.flush()
+    try:
+        db.flush()
+    except Exception:
+        # A failed insert must not leave private audio/evidence unreferenced.
+        delete_bytes(item)
+        raise
     return item
 
 
