@@ -29,8 +29,8 @@ from .models import (
     Transcript,
     User,
 )
-from .services.common import audit, enqueue, notify
 from .security import policy_value
+from .services.common import audit, enqueue, notify
 
 log = logging.getLogger("shiftproof.worker")
 
@@ -106,8 +106,8 @@ def email(job: BackgroundJob):
 def scheduled(db):
     from .services.alerts import escalate_due
     from .services.handovers import provisional_due
-    from .services.tasks import create_task, recipients, template_values
     from .services.storage import delete_bytes
+    from .services.tasks import create_task, recipients, template_values
 
     escalate_due(db)
     provisional_due(db)
@@ -276,33 +276,42 @@ def execute(job_id: str, lease: str):
             elif job.kind == "schedule":
                 result = scheduled(db)
             elif job.kind == "transcribe":
-                from .services.storage import read_bytes, wav_for_transcription
                 from .integrations.gnani.client import transcribe
+                from .services.storage import read_bytes, wav_for_transcription
+                from .services.voice import transcription_context
 
                 asset = db.get(FileAsset, job.payload["asset_id"])
                 if not asset or asset.deleted_at or asset.retention_until <= now():
                     raise ValueError("The recording is no longer retained.")
+                if asset.owner_id != user.id or not asset.consent:
+                    raise ValueError("This recording is no longer available for transcription.")
+                context = transcription_context(db, user, asset.department_id, job.payload.get("task_id"))
                 if db.bind.dialect.name == "mongodb":
                     db.commit()
-                data = transcribe(wav_for_transcription(read_bytes(asset)), job.payload["language"], job.id)
-                transcript = Transcript(
-                    organization_id=job.organization_id,
-                    author_id=job.actor_id,
-                    asset_id=asset.id,
-                    original=data["text"],
-                    language=data["language"],
-                    provider="gnani",
-                    model=data["model"],
-                    metadata_values=data["metadata"],
+                data = transcribe(
+                    wav_for_transcription(read_bytes(asset)), job.payload["language"], job.id, **context
                 )
-                db.add(transcript)
-                db.flush()
-                result = {
-                    "transcript_id": transcript.id,
-                    "text": transcript.original,
-                    "provider": "gnani",
-                    "model": transcript.model,
-                }
+                if not data["text"]:
+                    result = {"no_speech": True}
+                else:
+                    transcript = Transcript(
+                        organization_id=job.organization_id,
+                        author_id=job.actor_id,
+                        asset_id=asset.id,
+                        original=data["text"],
+                        language=data["language"],
+                        provider="gnani",
+                        model=data["model"],
+                        metadata_values=data["metadata"],
+                    )
+                    db.add(transcript)
+                    db.flush()
+                    result = {
+                        "transcript_id": transcript.id,
+                        "text": transcript.original,
+                        "provider": "gnani",
+                        "model": transcript.model,
+                    }
             elif job.kind == "extract":
                 from .integrations.gemini.client import extract
 
@@ -327,15 +336,32 @@ def execute(job_id: str, lease: str):
                 }
             elif job.kind == "speak":
                 from .integrations.gnani.client import speak
+                from .security import require_department
                 from .services.storage import store_asset
+
+                require_department(db, user, job.payload["department_id"], active=True)
+                source = job.payload.get("source", "")
+                if source.startswith("handover:"):
+                    from .services.handovers import visible_handover
+
+                    version = db.get(HandoverVersion, source.split(":", 1)[1])
+                    if not version:
+                        raise ValueError("This handover version is no longer available.")
+                    visible_handover(db, user, version.handover_id)
 
                 if db.bind.dialect.name == "mongodb":
                     db.commit()
-                audio = speak(job.payload["text"])
+                audio = speak(job.payload["text"], job.payload.get("language", "auto"))
                 asset = store_asset(
                     db, user, audio, "handover.wav", "audio/wav", "audio", job.payload["department_id"], True
                 )
-                result = {"asset_id": asset.id}
+                result = {
+                    "asset_id": asset.id,
+                    "script": job.payload["text"],
+                    "provider": "gnani",
+                    "model": get_settings().gnani_tts_model,
+                    "language": job.payload.get("language", "auto"),
+                }
             else:
                 raise ValueError("Unsupported processing request.")
             job.status, job.result, job.completed_at, job.error = "succeeded", result, now(), ""
