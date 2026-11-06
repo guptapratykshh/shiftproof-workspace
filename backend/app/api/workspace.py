@@ -221,7 +221,7 @@ class Orientation(Input):
 
 
 @router.put("/orientation")
-def orientation(values: Orientation, user: User = Depends(current_user)):
+def orientation(values: Orientation, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     if user.role != "supervisor":
         fail(403, "Supervisor orientation is only available to supervisors.")
     profile = {**user.profile, "orientation_step": str(values.step)}

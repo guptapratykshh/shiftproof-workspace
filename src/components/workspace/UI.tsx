@@ -425,6 +425,79 @@ export type FieldSpec = {
   wide?: boolean;
 };
 export type FormValues = Record<string, string | string[] | boolean>;
+export function MultiSelectPills({
+  name,
+  id,
+  options = [],
+  defaultValue = [],
+  onChange,
+}: {
+  name: string;
+  id: string;
+  options?: { label: string; value: string }[];
+  defaultValue?: string | string[];
+  onChange?: () => void;
+}) {
+  const initial = Array.isArray(defaultValue)
+    ? defaultValue.map(String)
+    : defaultValue
+      ? [String(defaultValue)]
+      : [];
+  const [selected, setSelected] = useState<string[]>(initial);
+
+  const toggle = (val: string) => {
+    setSelected((prev) => {
+      const next = prev.includes(val)
+        ? prev.filter((v) => v !== val)
+        : [...prev, val];
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    onChange?.();
+  }, [selected]);
+
+  return (
+    <div className="multi-pill-group" id={id} role="group">
+      {selected.map((val) => (
+        <input key={val} type="hidden" name={name} value={val} />
+      ))}
+      <div className="multi-pills-list">
+        {options.map((option) => {
+          const isSelected = selected.includes(option.value);
+          return (
+            <button
+              key={option.value}
+              type="button"
+              className={`pill-option ${isSelected ? "pill-option-selected" : ""}`}
+              onClick={() => toggle(option.value)}
+              aria-pressed={isSelected}
+            >
+              <span className="pill-check-indicator">
+                {isSelected ? "✓" : "+"}
+              </span>
+              <span>{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="multi-pills-actions">
+        <button
+          type="button"
+          onClick={() => setSelected(options.map((o) => o.value))}
+        >
+          Select all
+        </button>
+        <span aria-hidden="true">·</span>
+        <button type="button" onClick={() => setSelected([])}>
+          Clear all
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function FieldsForm({
   fields,
   submitLabel = "Save changes",
@@ -495,10 +568,22 @@ export function FieldsForm({
     return true;
   };
 
+  const serializeForm = (form: HTMLFormElement): string => {
+    const entries: string[] = [];
+    const data = new FormData(form);
+    for (const [k, v] of data.entries()) {
+      entries.push(`${k}=${v}`);
+    }
+    return entries.sort().join("&");
+  };
+
+  const initialSnapshotRef = useRef<string>("");
+
   useEffect(() => {
     const baseline = getBaselineValues();
     baselineRef.current = baseline;
     if (formRef.current) {
+      initialSnapshotRef.current = serializeForm(formRef.current);
       const current = extractValues(new FormData(formRef.current));
       setIsDirty(!areValuesEqual(baseline, current));
     } else {
@@ -513,6 +598,7 @@ export function FieldsForm({
       setSaved(true);
       if (formRef.current) {
         baselineRef.current = extractValues(new FormData(formRef.current));
+        initialSnapshotRef.current = serializeForm(formRef.current);
       }
       setIsDirty(false);
       onSuccess?.(result);
@@ -521,7 +607,11 @@ export function FieldsForm({
 
   const checkDirty = (form: HTMLFormElement) => {
     const current = extractValues(new FormData(form));
-    setIsDirty(!areValuesEqual(baselineRef.current, current));
+    const fieldsMatch = areValuesEqual(baselineRef.current, current);
+    const snapMatch =
+      !initialSnapshotRef.current ||
+      serializeForm(form) === initialSnapshotRef.current;
+    setIsDirty(!fieldsMatch || !snapMatch);
     setSaved(false);
   };
 
@@ -559,7 +649,7 @@ export function FieldsForm({
           };
           return (
             <div
-              className={`form-field ${field.wide || field.type === "textarea" || field.type === "multi" ? "field-wide" : ""}`}
+              className={`form-field ${field.type === "checkbox" ? "form-field-checkbox" : ""} ${field.wide || field.type === "textarea" || field.type === "multi" ? "field-wide" : ""}`}
               key={field.name}
             >
               {field.type === "checkbox" ? (
@@ -569,28 +659,40 @@ export function FieldsForm({
                     type="checkbox"
                     defaultChecked={Boolean(field.defaultValue)}
                   />
-                  {w(field.label)}
+                  <span className="check-label">{w(field.label)}</span>
                 </label>
+              ) : field.type === "multi" ? (
+                <>
+                  <label htmlFor={props.id}>
+                    {w(field.label)}
+                    {field.required && <span aria-hidden="true"> *</span>}
+                  </label>
+                  <MultiSelectPills
+                    name={field.name}
+                    id={props.id}
+                    options={field.options}
+                    defaultValue={field.defaultValue as string | string[]}
+                    onChange={() => {
+                      if (formRef.current) checkDirty(formRef.current);
+                    }}
+                  />
+                </>
               ) : (
                 <>
                   <label htmlFor={props.id}>
                     {w(field.label)}
                     {field.required && <span aria-hidden="true"> *</span>}
                   </label>
-                  {field.type === "select" || field.type === "multi" ? (
+                  {field.type === "select" ? (
                     <select
                       {...props}
-                      multiple={field.type === "multi"}
                       defaultValue={
-                        (field.defaultValue as string | string[]) ||
-                        (field.type === "multi" ? [] : "")
+                        (field.defaultValue as string) || ""
                       }
                     >
-                      {field.type === "select" && (
-                        <option value="">
-                          {w(field.required ? "Select an option" : "None")}
-                        </option>
-                      )}
+                      <option value="">
+                        {w(field.required ? "Select an option" : "None")}
+                      </option>
                       {field.options?.map((option) => (
                         <option key={option.value} value={option.value}>
                           {w(option.label)}

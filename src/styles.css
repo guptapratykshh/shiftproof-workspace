@@ -911,7 +911,7 @@ button {
 .input-wrap {
   position: relative;
 }
-.form-field input,
+.form-field input:not([type="checkbox"]):not([type="radio"]),
 .form-field select {
   width: 100%;
   min-height: var(--control-height);
@@ -2254,22 +2254,159 @@ textarea {
 .work-modal select[multiple] option {
   padding: 7px;
 }
+.form-field-checkbox {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height, 44px);
+  padding: 4px 0;
+}
 .check-field {
-  display: flex !important;
-  align-items: flex-start;
+  display: inline-flex !important;
+  align-items: center !important;
   gap: 10px;
-  font-size: 13px;
-  line-height: 1.8;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+  margin: 0 !important;
+  min-width: 0;
+}
+.check-field input[type="checkbox"],
+.check-field input[type="radio"],
+.task-row > input[type="checkbox"],
+.app-checkbox {
+  appearance: auto;
+  -webkit-appearance: checkbox;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  max-width: 18px !important;
+  min-height: 18px !important;
+  max-height: 18px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+  accent-color: var(--primary);
+  cursor: pointer;
+  vertical-align: middle;
+  background: transparent;
+  border: none;
+}
+.check-field input[type="radio"],
+.app-radio {
+  -webkit-appearance: radio;
+  border-radius: 50%;
+}
+.check-field .check-label,
+.check-field span,
+.check-field strong {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1.4;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+}
+.check-field small {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: normal;
+  margin-top: 2px;
+}
+.supervisor-role-picker {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.supervisor-role-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--muted);
 }
-.check-field input,
-.task-row > input {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  margin-top: 3px;
-  accent-color: var(--secondary);
+.supervisor-role-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.radio-role-option {
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--input);
+  transition: all 0.15s ease;
+  width: 100%;
+}
+.radio-role-option:hover {
+  border-color: var(--border-strong);
+}
+.radio-role-option input:checked + div strong {
+  color: var(--primary);
+}
+.multi-pill-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.multi-pills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pill-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border-strong);
+  background-color: var(--input);
+  color: var(--text);
   cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  user-select: none;
+}
+.pill-option:hover {
+  border-color: var(--primary);
+  background-color: var(--surface);
+}
+.pill-option-selected {
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+  border-color: var(--primary) !important;
+}
+.pill-check-indicator {
+  font-size: 11px;
+  font-weight: bold;
+}
+.multi-pills-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.multi-pills-actions button {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  color: var(--primary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .work-checks {
   display: flex;
@@ -2491,9 +2628,108 @@ textarea {
   border-color: var(--primary);
   background: var(--highlight);
 }
+/* Minimalist, intuitive stepper for Organisation Onboarding */
+.org-stepper-container {
+  margin-bottom: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card, 12px);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.org-stepper-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+.org-stepper-meta strong {
+  color: var(--text);
+  font-size: 14px;
+}
+.org-progress-track {
+  width: 100%;
+  height: 4px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.org-progress-fill {
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+.org-stepper-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.org-step-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 20px;
+  background: var(--input);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.org-step-chip:hover {
+  border-color: var(--primary);
+  color: var(--text);
+}
+.org-step-chip.active {
+  background: var(--highlight);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+.org-step-chip.completed {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.org-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.org-step-chip.active .org-step-num {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.org-step-chip.completed .org-step-num {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
 .onboarding-actions {
-  justify-content: flex-end;
-  padding-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
 }
 .task-row {
   display: flex;

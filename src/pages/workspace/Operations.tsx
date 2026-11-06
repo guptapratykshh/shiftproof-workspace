@@ -219,6 +219,7 @@ export function SupervisorOrientation() {
       });
     }
     void queryClient.invalidateQueries({ queryKey: ["session"] });
+    window.scrollTo({ top: 0, behavior: "smooth" });
     navigate("/workspace");
   };
 
