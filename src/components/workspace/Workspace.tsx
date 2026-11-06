@@ -57,7 +57,17 @@ function OrganizationLogo({ id }: { id: string }) {
   }, [id]);
   return url ? <img className="organization-logo" src={url} alt="" /> : null;
 }
-const workerNavigation = ["", "tasks", "record", "notifications", "settings"];
+const workerNavigation = [
+  "",
+  "tasks",
+  "record",
+  "reports",
+  "handovers",
+  "alerts",
+  "drafts",
+  "notifications",
+  "settings",
+];
 const workerTitles: Record<string, string> = {
   "": "Home",
   tasks: "My tasks",
@@ -224,16 +234,47 @@ export function Workspace() {
   const w = useWords();
   const client = useQueryClient();
   const [navOpen, setNavOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!navOpen) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    navRef.current?.querySelector<HTMLButtonElement>(".nav-close")?.focus();
     const dismiss = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setNavOpen(false);
-        document.getElementById("workspace-navigation-toggle")?.focus();
+        event.preventDefault();
+      }
+      if (event.key === "Tab") {
+        const controls = [
+          ...(navRef.current?.querySelectorAll<HTMLElement>(
+            "a[href], button:not(:disabled)",
+          ) || []),
+        ];
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
       }
     };
+    const desktop = matchMedia("(min-width: 901px)");
+    const closeOnDesktop = () => {
+      if (desktop.matches) setNavOpen(false);
+    };
+    desktop.addEventListener("change", closeOnDesktop);
     document.addEventListener("keydown", dismiss);
-    return () => document.removeEventListener("keydown", dismiss);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", dismiss);
+      desktop.removeEventListener("change", closeOnDesktop);
+      previousFocus?.focus();
+    };
   }, [navOpen]);
   const [online, setOnline] = useState(navigator.onLine);
   const [logoutError, setLogoutError] = useState<unknown>(null);
@@ -401,6 +442,7 @@ export function Workspace() {
             "कार्यस्थल नेविगेशन खोलें",
           )}
           aria-expanded={navOpen}
+          aria-controls="workspace-navigation"
           onClick={() => setNavOpen(!navOpen)}
         >
           {navOpen ? <X /> : <Menu />}
@@ -442,60 +484,130 @@ export function Workspace() {
         </Link>
       )}
       <div className="workspace-grid">
-        <aside className={`workspace-nav ${navOpen ? "nav-open" : ""}`}>
-          <p className="eyebrow">
-            {session.user.role === "worker"
-              ? t("Your shift", "आपकी शिफ्ट")
-              : session.user.role === "supervisor"
-                ? t("Team operations", "टीम संचालन")
-                : t("Organization", "संगठन")}
-          </p>
-          <nav aria-label={t("Workspace navigation", "कार्यस्थल नेविगेशन")}>
-            {links
-              .filter(
-                (link) =>
-                  link.roles.includes(session.user.role) &&
-                  (session.user.role !== "worker" ||
-                    workerNavigation.includes(link.path)),
-              )
-              .sort((a, b) =>
-                session.user.role === "worker"
-                  ? workerNavigation.indexOf(a.path) -
-                    workerNavigation.indexOf(b.path)
-                  : 0,
-              )
-              .map(({ path, title, icon: Icon }) => (
-                <NavLink
-                  key={path}
-                  end={path === ""}
-                  to={`/workspace${path ? `/${path}` : ""}`}
-                  onClick={() => setNavOpen(false)}
-                >
-                  <Icon size={19} />
-                  {w(
-                    session.user.role === "worker" ? workerTitles[path] : title,
-                  )}
-                </NavLink>
-              ))}
-          </nav>
-          {session.user.role === "organization" && (
-            <Link className="setup-link" to="/workspace/onboarding">
-              {w("Onboarding")}
-              {!session.organization.active && <StatusDot />}
-            </Link>
-          )}
+        {navOpen && (
           <button
-            className="signout-button"
-            onClick={() => {
-              setLogoutError(null);
-              void signOut().catch(setLogoutError);
-            }}
+            className="nav-scrim"
+            tabIndex={-1}
+            aria-label={t("Close navigation", "नेविगेशन बंद करें")}
+            onClick={() => setNavOpen(false)}
+          />
+        )}
+        <div className="workspace-sidebar">
+          <aside
+            id="workspace-navigation"
+            ref={navRef}
+            className={`workspace-nav ${navOpen ? "nav-open" : ""}`}
+            role={navOpen ? "dialog" : undefined}
+            aria-modal={navOpen || undefined}
+            aria-label={
+              navOpen ? t("Workspace menu", "कार्यस्थल मेन्यू") : undefined
+            }
           >
-            <LogOut size={18} />
-            {w("Sign out")}
-          </button>
-          {!!logoutError && <ErrorNotice error={logoutError} />}
-        </aside>
+            <button
+              className="icon-button nav-close"
+              aria-label={t("Close navigation", "नेविगेशन बंद करें")}
+              onClick={() => setNavOpen(false)}
+            >
+              <X size={20} />
+            </button>
+            <p className="eyebrow">
+              {session.user.role === "worker"
+                ? t("Your shift", "आपकी शिफ्ट")
+                : session.user.role === "supervisor"
+                  ? t("Team operations", "टीम संचालन")
+                  : t("Organization", "संगठन")}
+            </p>
+            <nav aria-label={t("Workspace navigation", "कार्यस्थल नेविगेशन")}>
+              {[
+                {
+                  title: t("Daily work", "दैनिक काम"),
+                  paths: [
+                    "",
+                    "attention",
+                    "tasks",
+                    "record",
+                    "reports",
+                    "handovers",
+                    "alerts",
+                    "conflicts",
+                    "follow-ups",
+                  ],
+                },
+                {
+                  title: t("People & organization", "लोग और संगठन"),
+                  paths: [
+                    "departments",
+                    "workforce",
+                    "shifts",
+                    "supervisors",
+                    "policies",
+                  ],
+                },
+                {
+                  title: t("Insights & account", "जानकारी और खाता"),
+                  paths: [
+                    "analytics",
+                    "audit",
+                    "drafts",
+                    "notifications",
+                    "settings",
+                  ],
+                },
+              ].map((group) => {
+                const visible = group.paths.flatMap((path) =>
+                  links.filter(
+                    (link) =>
+                      link.path === path &&
+                      link.roles.includes(session.user.role) &&
+                      (session.user.role !== "worker" ||
+                        workerNavigation.includes(path)),
+                  ),
+                );
+                return visible.length ? (
+                  <div className="nav-group" key={group.title}>
+                    <p className="nav-group-title">{group.title}</p>
+                    {visible.map(({ path, title, icon: Icon }) => (
+                      <NavLink
+                        key={path}
+                        end={path === ""}
+                        to={`/workspace${path ? `/${path}` : ""}`}
+                        onClick={() => setNavOpen(false)}
+                      >
+                        <Icon size={18} />
+                        {w(
+                          session.user.role === "worker"
+                            ? workerTitles[path] || title
+                            : title,
+                        )}
+                      </NavLink>
+                    ))}
+                  </div>
+                ) : null;
+              })}
+            </nav>
+            {session.user.role === "organization" && (
+              <Link
+                className="setup-link"
+                to="/workspace/onboarding"
+                onClick={() => setNavOpen(false)}
+              >
+                {w("Onboarding")}
+                {!session.organization.active && <StatusDot />}
+              </Link>
+            )}
+            <button
+              className="signout-button"
+              onClick={() => {
+                setLogoutError(null);
+                void signOut().catch(setLogoutError);
+              }}
+            >
+              <LogOut size={18} />
+              {w("Sign out")}
+            </button>
+            {!!logoutError && <ErrorNotice error={logoutError} />}
+          </aside>
+        </div>
         <main id="main-content" className="workspace-content">
           <Outlet />
         </main>

@@ -66,27 +66,34 @@ test("role choices lead to the documented role-specific fields", async ({
 test("theme icon switches directly, persists, and migrates older system preferences", async ({
   page,
 }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/");
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await page.getByRole("button", { name: "Switch to light theme" }).click();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await expect(page.locator(".theme-menu, #theme-options")).toHaveCount(0);
-  await page.getByRole("link", { name: "Build your workspace" }).click();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.getByRole("button", { name: "Switch to dark theme" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await page.emulateMedia({ colorScheme: "light" });
+  await expect(page.locator(".theme-menu, #theme-options")).toHaveCount(0);
+  await page.getByRole("link", { name: "Build your workspace" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  for (const scheme of ["light", "dark"] as const) {
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByRole("button", { name: "Switch to light theme" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  for (const scheme of ["dark", "light"] as const) {
     await page.emulateMedia({ colorScheme: scheme });
-    await page.evaluate(() => localStorage.setItem("shiftproof-theme", "system"));
+    await page.evaluate(() =>
+      localStorage.setItem("shiftproof-theme", "system"),
+    );
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
-    expect(await page.evaluate(() => localStorage.getItem("shiftproof-theme"))).toBe(scheme);
+    expect(
+      await page.evaluate(() => localStorage.getItem("shiftproof-theme")),
+    ).toBe(scheme);
     const opposite = scheme === "dark" ? "light" : "dark";
-    await page.getByRole("button", { name: `Switch to ${opposite} theme` }).click();
+    await page
+      .getByRole("button", { name: `Switch to ${opposite} theme` })
+      .click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", opposite);
   }
 });
@@ -214,8 +221,11 @@ for (const width of [320, 390, 768, 900, 1169, 1470, 1600, 1920, 2560]) {
           ).toBeLessThanOrEqual(width);
           await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
           const gutter =
-            width <= 600 ? 16 : width <= 1000 ? 24
-              : Math.min(48, Math.max(32, width * 0.025));
+            width <= 600
+              ? 16
+              : width <= 1000
+                ? 24
+                : Math.min(48, Math.max(32, width * 0.025));
           const header = await page.locator(".site-header").boundingBox();
           expect(header!.x, context).toBeCloseTo(gutter, 1);
           expect(header!.width, context).toBeCloseTo(width - 2 * gutter, 1);
@@ -265,16 +275,16 @@ test("keyboard focus, direct theme switching and password visibility work withou
   await expect(
     page.getByRole("link", { name: "Skip to content" }),
   ).toBeFocused();
-  await page.getByRole("button", { name: "Switch to light theme" }).focus();
+  await page.getByRole("button", { name: "Switch to dark theme" }).focus();
   await page.keyboard.press("Enter");
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await expect(
-    page.getByRole("button", { name: "Switch to dark theme" }),
-  ).toBeFocused();
-  await page.keyboard.press("Space");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(
     page.getByRole("button", { name: "Switch to light theme" }),
+  ).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(
+    page.getByRole("button", { name: "Switch to dark theme" }),
   ).toBeFocused();
   await page.getByLabel("Password", { exact: true }).fill("visible-test-123");
   await page.getByRole("button", { name: "Show secret" }).first().focus();
@@ -344,7 +354,6 @@ test("visual review captures and no client errors", async ({
     fullPage: true,
   });
   await page.goto("/signup");
-  await page.getByRole("button", { name: "Switch to light theme" }).click();
   await page.screenshot({
     path: testInfo.outputPath("signup-mobile-light.png"),
     fullPage: true,

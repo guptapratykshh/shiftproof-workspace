@@ -285,7 +285,6 @@ test("worker completes critical work and supervisor verifies it through the real
     fullPage: true,
     animations: "disabled",
   });
-  await page.getByRole("button", { name: "Switch to light theme" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(page.locator(".theme-menu, #theme-options")).toHaveCount(0);
   await page.goto(`/workspace/tasks/${seed.taskId}`);
@@ -344,6 +343,7 @@ test("offline report sync is server confirmed and local drafts are encrypted and
     .click();
   await expect(page.getByText("Pending sync", { exact: true })).toBeVisible();
   await page
+    .locator("main")
     .getByRole("link", { name: "Local drafts", exact: true })
     .first()
     .click();
@@ -986,4 +986,85 @@ test("spoken review is optional, clears on edit and fits Hindi mobile and deskto
     path: testInfo.outputPath("voice-review-hindi-mobile.png"),
     fullPage: true,
   });
+});
+
+test("mobile navigation and filters stay usable without nested page scrolling", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, "worker");
+  await page.goto("/workspace/tasks");
+  const filters = page.getByRole("button", { name: /Search and filters/ });
+  await expect(filters).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByLabel("Search by name")).toBeHidden();
+  await filters.click();
+  await page.getByLabel("Search by name").fill("packing");
+  await expect(filters).toContainText("1 active");
+  await filters.click();
+  await filters.click();
+  await expect(page.getByLabel("Search by name")).toHaveValue("packing");
+
+  const menu = page.getByRole("button", { name: "Open workspace navigation" });
+  await menu.click();
+  const drawer = page.getByRole("dialog", { name: "Workspace menu" });
+  const close = drawer.getByRole("button", { name: "Close navigation" });
+  await expect(close).toBeFocused();
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe(
+    "hidden",
+  );
+  await page.keyboard.press("Shift+Tab");
+  await expect(drawer.getByRole("button", { name: "Sign out" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(close).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(drawer).toHaveCount(0);
+  await expect(menu).toBeFocused();
+  expect(await page.evaluate(() => document.body.style.overflow)).not.toBe(
+    "hidden",
+  );
+  await menu.click();
+  await drawer.getByRole("link", { name: "Reports", exact: true }).click();
+  await expect(page).toHaveURL(/\/workspace\/reports$/);
+  await expect(drawer).toHaveCount(0);
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const nav = page.locator(".workspace-nav");
+  expect(
+    await nav.evaluate(
+      (element) => element.scrollHeight <= element.clientHeight + 1,
+    ),
+  ).toBe(true);
+  await nav.getByRole("button", { name: "Sign out" }).scrollIntoViewIfNeeded();
+  await expect(nav.getByRole("button", { name: "Sign out" })).toBeInViewport();
+});
+
+test("long forms keep background scrolling still and return focus after closing", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, "organization");
+  await page.goto("/workspace/workforce");
+  const trigger = page.getByRole("button", { name: "Add worker", exact: true });
+  await trigger.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe(
+    "hidden",
+  );
+  await dialog.evaluate(
+    (element) => (element.scrollTop = element.scrollHeight),
+  );
+  await expect(
+    dialog.getByRole("button", { name: "Close", exact: true }),
+  ).toBeInViewport();
+  const scroll = await page.evaluate(() => window.scrollY);
+  await page.mouse.move(2, 400);
+  await page.mouse.wheel(0, 500);
+  expect(await page.evaluate(() => window.scrollY)).toBe(scroll);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  expect(await page.evaluate(() => document.body.style.overflow)).not.toBe(
+    "hidden",
+  );
 });

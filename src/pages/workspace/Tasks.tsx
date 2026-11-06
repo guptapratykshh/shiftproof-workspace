@@ -8,6 +8,7 @@ import {
   Empty,
   ErrorNotice,
   FieldsForm,
+  FilterBar,
   Modal,
   PageTitle,
   Panel,
@@ -411,7 +412,7 @@ export function TasksPage() {
             : t("View board", "बोर्ड देखें")}
         </button>
       </PageTitle>
-      <div className="work-filters">
+      <FilterBar activeCount={Object.values(filter).filter(Boolean).length}>
         <label>
           {w("Search by name")}
           <input
@@ -526,7 +527,7 @@ export function TasksPage() {
             </select>
           </label>
         ))}
-      </div>
+      </FilterBar>
       {selection.length > 0 && (
         <div className="selection-bar">
           <span>
