@@ -32,6 +32,14 @@ An additional **48 captures** cover the nine organization setup steps, seven ana
 
 See the [before/after gallery](../artifacts/ui-review/index.html) and [complete route coverage](../artifacts/ui-review/coverage.json). Full visual-run screenshots remain in the ignored local `.sites-runtime/ui-review/` folder.
 
+## Sidebar height follow-up
+
+The desktop sidebar background previously ended at the last navigation link. A separate full-height sidebar column now stretches with the page, while the navigation retains its sticky position. The workspace also fills the viewport on short pages. This shared layout fixes owner, supervisor and worker views without introducing a separate desktop scrollbar.
+
+Chrome passed **54 layout checks** across all three roles: overview and handover pages at 1440×900, 1024×768 and 1440×1200, each checked at the top, middle and bottom. The sidebar covered the visible bottom edge in every check, with no horizontal overflow or internal navigation scrolling. The mobile drawer opened at full height and closed with Escape for all three roles at 390×844. The production build passed.
+
+Visually inspected scrolled screenshots: [owner](../artifacts/ui-review/sidebar-organization-scrolled.png), [supervisor](../artifacts/ui-review/sidebar-supervisor-scrolled.png), [worker](../artifacts/ui-review/sidebar-worker-scrolled.png). These follow-up screenshots show the sidebar fix; the earlier before/after captures predate it.
+
 ## Scope
 
 Visual review used isolated SQLite test accounts with synthetic operational data. It did not modify real organization records. External speech/AI providers are disabled in that visual preview; this pass verifies their UI states and the existing browser voice tests, not new real-provider accuracy. Chrome viewport tests are not physical-device, Safari or Firefox certification.

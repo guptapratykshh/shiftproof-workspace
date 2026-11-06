@@ -1747,7 +1747,14 @@ textarea {
   color: var(--text);
 }
 .workspace {
-  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.workspace > .site-header,
+.workspace > .workspace-identity,
+.workspace > .connection-banner {
+  flex-shrink: 0;
 }
 .workspace .site-header {
   width: 100%;
@@ -1802,14 +1809,21 @@ textarea {
   font-size: 11px;
 }
 .workspace-grid {
+  flex: 1;
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
   align-items: start;
 }
+.workspace-sidebar {
+  /* The full-height column stays painted while its links remain sticky. */
+  align-self: stretch;
+  min-width: 0;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+}
 .workspace-nav {
   padding: 24px 16px;
   background: var(--sidebar);
-  border-right: 1px solid var(--border);
   position: sticky;
   top: 0;
   height: auto;
@@ -3437,6 +3451,9 @@ textarea {
 @media (max-width: 900px) {
   .workspace-grid {
     display: block;
+  }
+  .workspace-sidebar {
+    display: contents;
   }
   .workspace-nav {
     position: fixed;

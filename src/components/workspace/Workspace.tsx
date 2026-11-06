@@ -492,120 +492,122 @@ export function Workspace() {
             onClick={() => setNavOpen(false)}
           />
         )}
-        <aside
-          id="workspace-navigation"
-          ref={navRef}
-          className={`workspace-nav ${navOpen ? "nav-open" : ""}`}
-          role={navOpen ? "dialog" : undefined}
-          aria-modal={navOpen || undefined}
-          aria-label={
-            navOpen ? t("Workspace menu", "कार्यस्थल मेन्यू") : undefined
-          }
-        >
-          <button
-            className="icon-button nav-close"
-            aria-label={t("Close navigation", "नेविगेशन बंद करें")}
-            onClick={() => setNavOpen(false)}
+        <div className="workspace-sidebar">
+          <aside
+            id="workspace-navigation"
+            ref={navRef}
+            className={`workspace-nav ${navOpen ? "nav-open" : ""}`}
+            role={navOpen ? "dialog" : undefined}
+            aria-modal={navOpen || undefined}
+            aria-label={
+              navOpen ? t("Workspace menu", "कार्यस्थल मेन्यू") : undefined
+            }
           >
-            <X size={20} />
-          </button>
-          <p className="eyebrow">
-            {session.user.role === "worker"
-              ? t("Your shift", "आपकी शिफ्ट")
-              : session.user.role === "supervisor"
-                ? t("Team operations", "टीम संचालन")
-                : t("Organization", "संगठन")}
-          </p>
-          <nav aria-label={t("Workspace navigation", "कार्यस्थल नेविगेशन")}>
-            {[
-              {
-                title: t("Daily work", "दैनिक काम"),
-                paths: [
-                  "",
-                  "attention",
-                  "tasks",
-                  "record",
-                  "reports",
-                  "handovers",
-                  "alerts",
-                  "conflicts",
-                  "follow-ups",
-                ],
-              },
-              {
-                title: t("People & organization", "लोग और संगठन"),
-                paths: [
-                  "departments",
-                  "workforce",
-                  "shifts",
-                  "supervisors",
-                  "policies",
-                ],
-              },
-              {
-                title: t("Insights & account", "जानकारी और खाता"),
-                paths: [
-                  "analytics",
-                  "audit",
-                  "drafts",
-                  "notifications",
-                  "settings",
-                ],
-              },
-            ].map((group) => {
-              const visible = group.paths.flatMap((path) =>
-                links.filter(
-                  (link) =>
-                    link.path === path &&
-                    link.roles.includes(session.user.role) &&
-                    (session.user.role !== "worker" ||
-                      workerNavigation.includes(path)),
-                ),
-              );
-              return visible.length ? (
-                <div className="nav-group" key={group.title}>
-                  <p className="nav-group-title">{group.title}</p>
-                  {visible.map(({ path, title, icon: Icon }) => (
-                    <NavLink
-                      key={path}
-                      end={path === ""}
-                      to={`/workspace${path ? `/${path}` : ""}`}
-                      onClick={() => setNavOpen(false)}
-                    >
-                      <Icon size={18} />
-                      {w(
-                        session.user.role === "worker"
-                          ? workerTitles[path] || title
-                          : title,
-                      )}
-                    </NavLink>
-                  ))}
-                </div>
-              ) : null;
-            })}
-          </nav>
-          {session.user.role === "organization" && (
-            <Link
-              className="setup-link"
-              to="/workspace/onboarding"
+            <button
+              className="icon-button nav-close"
+              aria-label={t("Close navigation", "नेविगेशन बंद करें")}
               onClick={() => setNavOpen(false)}
             >
-              {w("Onboarding")}
-              {!session.organization.active && <StatusDot />}
-            </Link>
-          )}
-          <button
-            className="signout-button"
-            onClick={() => {
-              setLogoutError(null);
-              void signOut().catch(setLogoutError);
-            }}
-          >
-            <LogOut size={18} />
-            {w("Sign out")}
-          </button>
-          {!!logoutError && <ErrorNotice error={logoutError} />}
-        </aside>
+              <X size={20} />
+            </button>
+            <p className="eyebrow">
+              {session.user.role === "worker"
+                ? t("Your shift", "आपकी शिफ्ट")
+                : session.user.role === "supervisor"
+                  ? t("Team operations", "टीम संचालन")
+                  : t("Organization", "संगठन")}
+            </p>
+            <nav aria-label={t("Workspace navigation", "कार्यस्थल नेविगेशन")}>
+              {[
+                {
+                  title: t("Daily work", "दैनिक काम"),
+                  paths: [
+                    "",
+                    "attention",
+                    "tasks",
+                    "record",
+                    "reports",
+                    "handovers",
+                    "alerts",
+                    "conflicts",
+                    "follow-ups",
+                  ],
+                },
+                {
+                  title: t("People & organization", "लोग और संगठन"),
+                  paths: [
+                    "departments",
+                    "workforce",
+                    "shifts",
+                    "supervisors",
+                    "policies",
+                  ],
+                },
+                {
+                  title: t("Insights & account", "जानकारी और खाता"),
+                  paths: [
+                    "analytics",
+                    "audit",
+                    "drafts",
+                    "notifications",
+                    "settings",
+                  ],
+                },
+              ].map((group) => {
+                const visible = group.paths.flatMap((path) =>
+                  links.filter(
+                    (link) =>
+                      link.path === path &&
+                      link.roles.includes(session.user.role) &&
+                      (session.user.role !== "worker" ||
+                        workerNavigation.includes(path)),
+                  ),
+                );
+                return visible.length ? (
+                  <div className="nav-group" key={group.title}>
+                    <p className="nav-group-title">{group.title}</p>
+                    {visible.map(({ path, title, icon: Icon }) => (
+                      <NavLink
+                        key={path}
+                        end={path === ""}
+                        to={`/workspace${path ? `/${path}` : ""}`}
+                        onClick={() => setNavOpen(false)}
+                      >
+                        <Icon size={18} />
+                        {w(
+                          session.user.role === "worker"
+                            ? workerTitles[path] || title
+                            : title,
+                        )}
+                      </NavLink>
+                    ))}
+                  </div>
+                ) : null;
+              })}
+            </nav>
+            {session.user.role === "organization" && (
+              <Link
+                className="setup-link"
+                to="/workspace/onboarding"
+                onClick={() => setNavOpen(false)}
+              >
+                {w("Onboarding")}
+                {!session.organization.active && <StatusDot />}
+              </Link>
+            )}
+            <button
+              className="signout-button"
+              onClick={() => {
+                setLogoutError(null);
+                void signOut().catch(setLogoutError);
+              }}
+            >
+              <LogOut size={18} />
+              {w("Sign out")}
+            </button>
+            {!!logoutError && <ErrorNotice error={logoutError} />}
+          </aside>
+        </div>
         <main id="main-content" className="workspace-content">
           <Outlet />
         </main>
