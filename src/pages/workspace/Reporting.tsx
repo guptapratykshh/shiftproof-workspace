@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { useCatalog } from "../../components/workspace/Workspace";
 import {
+  VoicePlayback,
+  useOnline,
+} from "../../components/workspace/VoicePlayback";
+import {
   ActionButton,
   Empty,
   ErrorNotice,
@@ -96,6 +100,20 @@ export function ReportComposer() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [audioPreview, setAudioPreview] = useState("");
   const [loaded, setLoaded] = useState(!params.get("draft"));
+  const online = useOnline();
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const revision = useRef(0);
+  const pendingRevision = useRef(0);
+  const cancelledRecording = useRef(false);
+  const mounted = useRef(true);
+  const capabilities = useQuery({
+    queryKey: ["voice-capabilities"],
+    queryFn: () =>
+      api<{ transcription: boolean; playback: boolean; extraction: boolean }>(
+        "/voice/capabilities",
+      ),
+    staleTime: 60_000,
+  });
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const chunks = useRef<Blob[]>([]);
@@ -103,6 +121,19 @@ export function ReportComposer() {
   const [associations, setAssociations] = useState<
     { id: string; title: string; basis: string }[]
   >([]);
+  useEffect(() => {
+    setConfirmed(false);
+  }, [
+    text,
+    fields,
+    departmentId,
+    teamId,
+    shiftId,
+    taskId,
+    attachments,
+    critical,
+    recording,
+  ]);
   const shiftInitialized = useRef(false);
   const context = useQuery({
     queryKey: ["workspace-context"],
@@ -177,6 +208,15 @@ export function ReportComposer() {
         setTaskId(item.payload.task_id || "");
         setText(item.payload.text);
         setFields(item.payload.fields);
+        setDetailsOpen(
+          !!item.payload.extraction_id ||
+            Object.entries(item.payload.fields).some(
+              ([key, value]) =>
+                !["category", "description", "uncertainty"].includes(key) &&
+                value != null &&
+                value !== "",
+            ),
+        );
         setTranscriptId(item.payload.transcript_id);
         setExtractionId(item.payload.extraction_id);
         setCritical(item.payload.immediate_safety);
@@ -237,13 +277,15 @@ export function ReportComposer() {
       clearTimeout(stop);
     };
   }, [recording]);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      cancelledRecording.current = true;
       if (recorder.current?.state === "recording") recorder.current.stop();
       stream.current?.getTracks().forEach((track) => track.stop());
-    },
-    [],
-  );
+    };
+  }, []);
   useEffect(() => {
     const audio = attachments.find((item) => item.kind === "audio");
     if (!audio) {
@@ -263,18 +305,39 @@ export function ReportComposer() {
     )
       return;
     handledJobs.current.add(value.id);
+    if (pendingRevision.current !== revision.current) {
+      setHint(
+        t(
+          "Your edits were kept. Process the updated words again if needed.",
+          "आपके बदलाव सुरक्षित हैं। ज़रूरत हो तो बदले हुए शब्द फिर से प्रोसेस करें।",
+        ),
+      );
+      return;
+    }
+    if (value.result.no_speech) {
+      setHint(
+        t(
+          "No clear speech was found. Try speaking closer to the microphone, or type your update.",
+          "साफ़ आवाज़ नहीं मिली। माइक्रोफ़ोन के पास बोलें या अपडेट लिखें।",
+        ),
+      );
+      return;
+    }
     if (value.result.text) {
       setOriginal(value.result.text);
       setText(value.result.text);
       setTranscriptId(value.result.transcript_id || null);
+      setExtractionId(null);
+      setFields({ category: "general", description: "" });
       setHint(
         t(
-          "Review the transcript before requesting suggestions.",
-          "सुझाव माँगने से पहले ट्रांसक्रिप्ट की समीक्षा करें।",
+          "Your words are ready. Check them, listen if helpful, then confirm and send.",
+          "आपके शब्द तैयार हैं। जाँचें, चाहें तो सुनें, फिर पुष्टि करके भेजें।",
         ),
       );
     }
     if (value.result.fields) {
+      setDetailsOpen(true);
       setFields(value.result.fields);
       setExtractionId(value.result.extraction_id || null);
       setTranscriptId(value.result.transcript_id || transcriptId);
@@ -311,9 +374,17 @@ export function ReportComposer() {
       return;
     }
     try {
+      setBusy(true);
+      cancelledRecording.current = false;
       stream.current = await navigator.mediaDevices.getUserMedia({
-        audio: true,
+        audio: { echoCancellation: true, noiseSuppression: true },
       });
+      if (!mounted.current) {
+        stream.current.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      revision.current += 1;
+      setConfirmed(false);
       chunks.current = [];
       setElapsed(0);
       const mimeType = [
@@ -330,6 +401,7 @@ export function ReportComposer() {
         if (event.data.size) chunks.current.push(event.data);
       };
       media.onerror = () => {
+        cancelledRecording.current = true;
         setError(
           t(
             "Recording stopped unexpectedly. Retry or use text.",
@@ -341,7 +413,18 @@ export function ReportComposer() {
       };
       media.onstop = () => {
         stream.current?.getTracks().forEach((track) => track.stop());
+        if (!mounted.current) return;
         setRecording(false);
+        if (cancelledRecording.current) {
+          chunks.current = [];
+          setHint(
+            t(
+              "Recording cancelled. Your previous update is unchanged.",
+              "रिकॉर्डिंग रद्द हुई। पिछला अपडेट नहीं बदला है।",
+            ),
+          );
+          return;
+        }
         const audio = new Blob(chunks.current, { type: media.mimeType });
         void fileAttachment(
           audio,
@@ -349,7 +432,8 @@ export function ReportComposer() {
           "audio",
           true,
         )
-          .then((attachment) => {
+          .then(async (attachment) => {
+            if (!mounted.current) return;
             setAttachments((current) => [
               ...current.filter((a) => a.kind !== "audio"),
               attachment,
@@ -360,36 +444,61 @@ export function ReportComposer() {
                 "रिकॉर्डिंग ड्राफ्ट में है। कनेक्शन पर ट्रांसक्रिप्ट बनाएँ या अपडेट लिखें।",
               ),
             );
+            await saveDraft(session, {
+              ...draft("Saved locally"),
+              attachments: [
+                ...attachments.filter((a) => a.kind !== "audio"),
+                attachment,
+              ],
+            });
+            if (
+              mounted.current &&
+              navigator.onLine &&
+              capabilities.data?.transcription !== false
+            )
+              void transcribe(attachment);
           })
           .catch(setError);
       };
       media.start(250);
       setRecording(true);
     } catch {
+      stream.current?.getTracks().forEach((track) => track.stop());
+      cancelledRecording.current = true;
+      setRecording(false);
       setError(
         t(
           "Microphone access was denied or no microphone is available. You can still type your update.",
           "माइक्रोफ़ोन की अनुमति नहीं मिली या माइक्रोफ़ोन उपलब्ध नहीं है। आप अपडेट लिख सकते हैं।",
         ),
       );
+    } finally {
+      if (mounted.current) setBusy(false);
     }
   };
-  const transcribe = async () => {
-    const recording = attachments.find((a) => a.kind === "audio");
-    if (!recording) return;
+  const transcribe = async (
+    audio = attachments.find((a) => a.kind === "audio"),
+  ) => {
+    if (!audio) return;
+    const requestedRevision = revision.current;
+    setJobId(null);
     setBusy(true);
     setError(null);
     try {
       const uploadedId =
-        recording.uploadedId ||
-        (await uploadAttachment(recording, departmentId)).id;
+        audio.uploadedId || (await uploadAttachment(audio, departmentId)).id;
+      if (!mounted.current) return;
       setAttachments((current) =>
-        current.map((a) => (a === recording ? { ...a, uploadedId } : a)),
+        current.map((a) => (a === audio ? { ...a, uploadedId } : a)),
       );
       const result = await post<Job>("/transcriptions", {
         asset_id: uploadedId,
         language: speechLanguage,
+        task_id: taskId || null,
       });
+      if (!mounted.current) return;
+      pendingRevision.current = requestedRevision;
+      handledJobs.current.delete(result.id);
       setJobId(result.id);
     } catch (cause) {
       setError(cause);
@@ -398,6 +507,8 @@ export function ReportComposer() {
     }
   };
   const extract = async () => {
+    const requestedRevision = revision.current;
+    setJobId(null);
     setBusy(true);
     setError(null);
     try {
@@ -405,6 +516,9 @@ export function ReportComposer() {
         text,
         transcript_id: transcriptId,
       });
+      if (!mounted.current) return;
+      pendingRevision.current = requestedRevision;
+      handledJobs.current.delete(result.id);
       setJobId(result.id);
     } catch (cause) {
       setError(cause);
@@ -454,6 +568,7 @@ export function ReportComposer() {
     }
   };
   const setField = (key: keyof ReportFields, value: string) => {
+    revision.current += 1;
     setFields((current) => ({
       ...current,
       [key]:
@@ -485,7 +600,21 @@ export function ReportComposer() {
       </>
     );
   const processing =
-    !!jobId && !["succeeded", "failed"].includes(job.data?.status || "");
+    !!jobId &&
+    !job.isError &&
+    !["succeeded", "failed"].includes(job.data?.status || "");
+  const readback = {
+    department_id: departmentId,
+    text,
+    fields,
+    immediate_safety: critical,
+    language:
+      speechLanguage === "en-IN"
+        ? "en-IN"
+        : speechLanguage === "hi-IN"
+          ? "hi-IN"
+          : "auto",
+  };
   return (
     <>
       <PageTitle
@@ -503,6 +632,21 @@ export function ReportComposer() {
         </Link>
         <Status value={status} />
       </PageTitle>
+      <ol
+        className="voice-steps"
+        aria-label={t("Report steps", "रिपोर्ट के चरण")}
+      >
+        {[
+          t("Speak or type", "बोलें या लिखें"),
+          t("Check and listen", "जाँचें और सुनें"),
+          t("Confirm and send", "पुष्टि करके भेजें"),
+        ].map((step, index) => (
+          <li key={step}>
+            <span>{index + 1}</span>
+            {step}
+          </li>
+        ))}
+      </ol>
       <div className="report-compose-layout">
         <div className="work-stack">
           <Panel title={t("01 / Capture your update", "01 / अपडेट दर्ज करें")}>
@@ -510,13 +654,16 @@ export function ReportComposer() {
               <label className="form-field">
                 {w("Department")} *
                 <select
-                  disabled={!!immediateAlertId}
+                  disabled={
+                    !!immediateAlertId || recording || busy || processing
+                  }
                   value={departmentId}
                   onChange={(event) => {
                     setDepartmentId(event.target.value);
                     setTeamId("");
                     setTaskId("");
                     setConfirmed(false);
+                    revision.current += 1;
                   }}
                 >
                   <option value="">{w("Select an option")}</option>
@@ -533,7 +680,12 @@ export function ReportComposer() {
                 {w("Speech language")}
                 <select
                   value={speechLanguage}
-                  onChange={(event) => setSpeechLanguage(event.target.value)}
+                  disabled={recording || busy || processing}
+                  onChange={(event) => {
+                    setSpeechLanguage(event.target.value);
+                    setConfirmed(false);
+                    revision.current += 1;
+                  }}
                 >
                   <option value="hi-IN,en-IN">हिन्दी / Hinglish</option>
                   <option value="hi-IN">हिन्दी</option>
@@ -545,6 +697,7 @@ export function ReportComposer() {
               <input
                 type="checkbox"
                 checked={consent}
+                disabled={recording}
                 onChange={(event) => setConsent(event.target.checked)}
               />
               {t(
@@ -562,7 +715,7 @@ export function ReportComposer() {
                     ? t("Stop recording", "रिकॉर्डिंग रोकें")
                     : t("Start recording", "रिकॉर्डिंग शुरू करें")
                 }
-                disabled={busy}
+                disabled={busy || processing}
                 onClick={
                   recording ? () => recorder.current?.stop() : startRecording
                 }
@@ -579,21 +732,52 @@ export function ReportComposer() {
                   {recording
                     ? `${elapsed} / 29 ${t("seconds", "सेकंड")}`
                     : t(
-                        "Up to 29 seconds. Hindi, Hinglish or English.",
-                        "अधिकतम 29 सेकंड। हिन्दी, हिंग्लिश या अंग्रेज़ी।",
+                        "Up to 29 seconds. Stop to turn your words into text. You can also type below.",
+                        "अधिकतम 29 सेकंड। रोकने पर आपके शब्द लिखे जाएँगे। नीचे लिख भी सकते हैं।",
                       )}
                 </p>
               </div>
+              {recording && (
+                <button
+                  type="button"
+                  className="button button-outline"
+                  onClick={() => {
+                    cancelledRecording.current = true;
+                    recorder.current?.stop();
+                  }}
+                >
+                  {t("Cancel recording", "रिकॉर्डिंग रद्द करें")}
+                </button>
+              )}
             </div>
+            {(!online || capabilities.data?.transcription === false) && (
+              <p className="work-note" role="status">
+                {!online
+                  ? t(
+                      "You’re offline. Record or type now; your draft stays on this device. Generate text when connected.",
+                      "आप ऑफ़लाइन हैं। रिकॉर्ड करें या लिखें; ड्राफ्ट यहीं सुरक्षित रहेगा। कनेक्शन पर शब्द लिखवाएँ।",
+                    )
+                  : t(
+                      "Voice transcription is unavailable. Your recording can be saved; type your update to continue.",
+                      "आवाज़ से लिखना उपलब्ध नहीं है। रिकॉर्डिंग सुरक्षित रहेगी; आगे बढ़ने के लिए अपडेट लिखें।",
+                    )}
+              </p>
+            )}
             {audioPreview && (
               <div className="work-stack">
                 <audio controls src={audioPreview} />
                 <button
                   className="button button-outline"
                   onClick={() => void transcribe()}
-                  disabled={busy || processing || !navigator.onLine}
+                  disabled={
+                    busy ||
+                    processing ||
+                    recording ||
+                    !online ||
+                    capabilities.data?.transcription === false
+                  }
                 >
-                  {t("Generate transcript", "ट्रांसक्रिप्ट बनाएँ")}
+                  {t("Turn recording into text", "रिकॉर्डिंग से शब्द लिखें")}
                 </button>
               </div>
             )}
@@ -603,12 +787,14 @@ export function ReportComposer() {
                 "आपका अपडेट — लिखें या ट्रांसक्रिप्ट सुधारें",
               )}
               <textarea
+                disabled={recording}
                 rows={6}
                 maxLength={20000}
                 value={text}
                 onChange={(event) => {
                   setText(event.target.value);
                   setConfirmed(false);
+                  revision.current += 1;
                 }}
                 placeholder={t(
                   "For example: packing is complete, but quality inspection is still pending.",
@@ -630,178 +816,225 @@ export function ReportComposer() {
             <button
               className="button button-outline"
               onClick={() => void extract()}
-              disabled={!text.trim() || busy || processing || !navigator.onLine}
+              disabled={
+                !text.trim() ||
+                busy ||
+                processing ||
+                recording ||
+                !online ||
+                capabilities.data?.extraction === false
+              }
             >
               <WandSparkles size={17} />
-              {t("Suggest report fields", "रिपोर्ट फ़ील्ड सुझाएँ")}
+              {t("Help fill in details", "विवरण भरने में मदद लें")}
             </button>
             {(processing || job.data?.status === "failed") && (
-              <div className="processing-state">
+              <div
+                className="processing-state"
+                role="status"
+                aria-live="polite"
+              >
                 <Status value={job.data?.status || "Processing"} />
                 <p>
                   {job.data?.error ||
                     t(
-                      "Your source is saved while processing continues.",
-                      "प्रक्रिया जारी है और मूल अपडेट सुरक्षित है।",
+                      "Preparing your update. You can keep reading; nothing is submitted yet.",
+                      "आपका अपडेट तैयार हो रहा है। अभी कुछ जमा नहीं हुआ है।",
                     )}
                 </p>
                 {job.data?.status === "failed" && (
-                  <ActionButton action={() => post(`/jobs/${jobId}/retry`)}>
+                  <ActionButton
+                    action={async () => {
+                      handledJobs.current.delete(jobId!);
+                      await post(`/jobs/${jobId}/retry`);
+                      await job.refetch();
+                    }}
+                  >
                     {w("Try again")}
                   </ActionButton>
                 )}
               </div>
             )}
-          </Panel>
-          <Panel
-            title={t("02 / Review the details", "02 / विवरण की समीक्षा करें")}
-          >
-            <ActionButton
-              action={async () => {
-                const result = await post<{ items: typeof associations }>(
-                  "/task-associations",
-                  { text, department_id: departmentId },
-                );
-                setAssociations(result.items);
-              }}
-            >
-              {t(
-                "Find related work from this update",
-                "इस अपडेट से संबंधित कार्य खोजें",
-              )}
-            </ActionButton>
-            {associations.map((candidate) => (
-              <button
-                className="button button-outline"
-                key={candidate.id}
-                onClick={() => {
-                  setTaskId(candidate.id);
-                  setConfirmed(false);
-                }}
-              >
-                {t("Use this suggested task", "यह सुझाया कार्य चुनें")}:{" "}
-                {candidate.title}
-              </button>
-            ))}
-            {associations.length > 0 && (
-              <p className="work-note">
-                {t(
-                  "Suggestions match your words to work you can access. Select only if the association is correct; no task is required.",
-                  "सुझाव आपके शब्दों से आपके कार्य मिलाते हैं। सही होने पर ही चुनें; कार्य चुनना आवश्यक नहीं है।",
-                )}
+            {job.isError && <ErrorNotice error={job.error} />}
+            {hint && (
+              <p className="work-note" role="status">
+                {hint}
               </p>
             )}
-
-            <p className="work-note">
+            {!!error && <ErrorNotice error={error} />}
+          </Panel>
+          <details
+            className="report-details"
+            open={detailsOpen}
+            onToggle={(event) => setDetailsOpen(event.currentTarget.open)}
+          >
+            <summary>
               {t(
-                "Only fill in what applies. AI suggestions are unverified until you check them; leave uncertain facts blank.",
-                "केवल लागू जानकारी भरें। AI सुझाव जाँचने तक अपुष्ट हैं; अनिश्चित तथ्य खाली छोड़ें।",
+                "Add or check work details (optional)",
+                "काम का विवरण जोड़ें या जाँचें (वैकल्पिक)",
               )}
-            </p>
-            {fields.uncertainty?.length ? (
-              <div className="uncertainty-box">
-                <strong>
-                  {t("Needs your confirmation", "आपकी पुष्टि आवश्यक है")}
-                </strong>
-                {fields.uncertainty.map((question, index) => (
-                  <p key={index}>{question}</p>
-                ))}
-              </div>
-            ) : null}
-            <div className="work-form-grid">
-              <label className="form-field">
-                {w("Category")}
-                <select
-                  value={fields.category}
-                  onChange={(event) => setField("category", event.target.value)}
+            </summary>
+            <Panel
+              title={t("02 / Review the details", "02 / विवरण की समीक्षा करें")}
+            >
+              <ActionButton
+                action={async () => {
+                  const result = await post<{ items: typeof associations }>(
+                    "/task-associations",
+                    { text, department_id: departmentId },
+                  );
+                  setAssociations(result.items);
+                }}
+              >
+                {t(
+                  "Find related work from this update",
+                  "इस अपडेट से संबंधित कार्य खोजें",
+                )}
+              </ActionButton>
+              {associations.map((candidate) => (
+                <button
+                  className="button button-outline"
+                  key={candidate.id}
+                  onClick={() => {
+                    setTaskId(candidate.id);
+                    setConfirmed(false);
+                  }}
                 >
-                  {categories.map((category) => (
-                    <option value={category} key={category}>
-                      {w(category)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="form-field">
-                {w("Related task")}
-                <select
-                  value={taskId}
-                  onChange={(event) => setTaskId(event.target.value)}
-                >
-                  <option value="">
-                    {t("No task association", "किसी कार्य से नहीं जुड़ा")}
-                  </option>
-                  {tasks.data?.items.map((task) => (
-                    <option value={task.id} key={task.id}>
-                      {task.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {(
-                [
-                  { key: "machine", label: "Machine / equipment" },
-                  { key: "work_area", label: "Work area" },
-                  { key: "batch", label: "Batch / order" },
-                  { key: "quantity", label: "Quantity" },
-                  { key: "unit", label: "Unit" },
-                  { key: "operational_status", label: "Operational status" },
-                  { key: "action_taken", label: "Action already taken" },
-                  { key: "safety_implication", label: "Safety implication" },
-                  { key: "quality_implication", label: "Quality implication" },
-                ] as const
-              ).map((item) => (
-                <label className="form-field" key={item.key}>
-                  {w(item.label)}
-                  <input
-                    type={item.key === "quantity" ? "number" : "text"}
-                    min={item.key === "quantity" ? 0 : undefined}
-                    step={item.key === "quantity" ? "any" : undefined}
-                    value={fields[item.key] ?? ""}
-                    onChange={(event) => setField(item.key, event.target.value)}
-                  />
-                </label>
+                  {t("Use this suggested task", "यह सुझाया कार्य चुनें")}:{" "}
+                  {candidate.title}
+                </button>
               ))}
-              <label className="form-field">
-                {w("Team")}
-                <select
-                  value={teamId}
-                  onChange={(event) => setTeamId(event.target.value)}
-                >
-                  <option value="">{w("None")}</option>
-                  {teams.data
-                    ?.filter(
-                      (team) =>
-                        team.department_id === departmentId &&
-                        team.active &&
-                        (session.user.role !== "worker" ||
-                          session.teamMemberships.some(
-                            (m) => m.team_id === team.id,
-                          )),
-                    )
-                    .map((team) => (
-                      <option key={team.id} value={team.id}>
-                        {team.name}
+              {associations.length > 0 && (
+                <p className="work-note">
+                  {t(
+                    "Suggestions match your words to work you can access. Select only if the association is correct; no task is required.",
+                    "सुझाव आपके शब्दों से आपके कार्य मिलाते हैं। सही होने पर ही चुनें; कार्य चुनना आवश्यक नहीं है।",
+                  )}
+                </p>
+              )}
+
+              <p className="work-note">
+                {t(
+                  "Only fill in what applies. AI suggestions are unverified until you check them; leave uncertain facts blank.",
+                  "केवल लागू जानकारी भरें। AI सुझाव जाँचने तक अपुष्ट हैं; अनिश्चित तथ्य खाली छोड़ें।",
+                )}
+              </p>
+              {fields.uncertainty?.length ? (
+                <div className="uncertainty-box">
+                  <strong>
+                    {t("Needs your confirmation", "आपकी पुष्टि आवश्यक है")}
+                  </strong>
+                  {fields.uncertainty.map((question, index) => (
+                    <p key={index}>{question}</p>
+                  ))}
+                </div>
+              ) : null}
+              <div className="work-form-grid">
+                <label className="form-field">
+                  {w("Category")}
+                  <select
+                    value={fields.category}
+                    onChange={(event) =>
+                      setField("category", event.target.value)
+                    }
+                  >
+                    {categories.map((category) => (
+                      <option value={category} key={category}>
+                        {w(category)}
                       </option>
                     ))}
-                </select>
-              </label>
-              <label className="form-field">
-                {w("Shift")}
-                <select
-                  value={shiftId}
-                  onChange={(event) => setShiftId(event.target.value)}
-                >
-                  <option value="">{w("None")}</option>
-                  {shifts.data?.map((shift) => (
-                    <option key={shift.id} value={shift.id}>
-                      {shift.name} · {shift.starts_at}–{shift.ends_at}
+                  </select>
+                </label>
+                <label className="form-field">
+                  {w("Related task")}
+                  <select
+                    value={taskId}
+                    onChange={(event) => {
+                      setTaskId(event.target.value);
+                      setConfirmed(false);
+                      revision.current += 1;
+                    }}
+                  >
+                    <option value="">
+                      {t("No task association", "किसी कार्य से नहीं जुड़ा")}
                     </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </Panel>
+                    {tasks.data?.items.map((task) => (
+                      <option value={task.id} key={task.id}>
+                        {task.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {(
+                  [
+                    { key: "machine", label: "Machine / equipment" },
+                    { key: "work_area", label: "Work area" },
+                    { key: "batch", label: "Batch / order" },
+                    { key: "quantity", label: "Quantity" },
+                    { key: "unit", label: "Unit" },
+                    { key: "operational_status", label: "Operational status" },
+                    { key: "action_taken", label: "Action already taken" },
+                    { key: "safety_implication", label: "Safety implication" },
+                    {
+                      key: "quality_implication",
+                      label: "Quality implication",
+                    },
+                  ] as const
+                ).map((item) => (
+                  <label className="form-field" key={item.key}>
+                    {w(item.label)}
+                    <input
+                      type={item.key === "quantity" ? "number" : "text"}
+                      min={item.key === "quantity" ? 0 : undefined}
+                      step={item.key === "quantity" ? "any" : undefined}
+                      value={fields[item.key] ?? ""}
+                      onChange={(event) =>
+                        setField(item.key, event.target.value)
+                      }
+                    />
+                  </label>
+                ))}
+                <label className="form-field">
+                  {w("Team")}
+                  <select
+                    value={teamId}
+                    onChange={(event) => setTeamId(event.target.value)}
+                  >
+                    <option value="">{w("None")}</option>
+                    {teams.data
+                      ?.filter(
+                        (team) =>
+                          team.department_id === departmentId &&
+                          team.active &&
+                          (session.user.role !== "worker" ||
+                            session.teamMemberships.some(
+                              (m) => m.team_id === team.id,
+                            )),
+                      )
+                      .map((team) => (
+                        <option key={team.id} value={team.id}>
+                          {team.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label className="form-field">
+                  {w("Shift")}
+                  <select
+                    value={shiftId}
+                    onChange={(event) => setShiftId(event.target.value)}
+                  >
+                    <option value="">{w("None")}</option>
+                    {shifts.data?.map((shift) => (
+                      <option key={shift.id} value={shift.id}>
+                        {shift.name} · {shift.starts_at}–{shift.ends_at}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </Panel>
+          </details>
           <Panel title="Evidence">
             <label className="file-drop">
               <Paperclip size={22} />
@@ -875,19 +1108,36 @@ export function ReportComposer() {
           </Panel>
         </div>
         <aside className="report-submit-panel">
-          <Panel title={t("Carry it forward", "आगे पहुँचाएँ")}>
+          <Panel title={t("03 / Check and send", "03 / जाँचें और भेजें")}>
             <p>
               {t(
                 "Your original update and confirmed details stay linked. Confirm only what you observed.",
                 "मूल अपडेट और पुष्टि किए विवरण जुड़े रहते हैं। केवल अपने अवलोकन की पुष्टि करें।",
               )}
             </p>
+            <VoicePlayback
+              key={recording ? "recording" : JSON.stringify(readback)}
+              endpoint="/report-readback"
+              body={readback}
+              label={t("Listen to my update", "मेरा अपडेट सुनें")}
+              disabled={
+                !text.trim() ||
+                !departmentId ||
+                recording ||
+                busy ||
+                processing ||
+                capabilities.data?.playback === false
+              }
+            />
             <label className="check-field">
               <input
                 type="checkbox"
                 checked={critical}
                 disabled={!!immediateAlertId}
-                onChange={(event) => setCritical(event.target.checked)}
+                onChange={(event) => {
+                  setCritical(event.target.checked);
+                  setConfirmed(false);
+                }}
               />
               {t(
                 "This is an immediate safety concern",
@@ -935,6 +1185,7 @@ export function ReportComposer() {
               <input
                 type="checkbox"
                 checked={confirmed}
+                disabled={busy || recording || processing || !text.trim()}
                 onChange={(event) => setConfirmed(event.target.checked)}
               />
               {t(
@@ -942,17 +1193,12 @@ export function ReportComposer() {
                 "मैंने रिपोर्ट जाँची है और अनिश्चित जानकारी स्पष्ट की है।",
               )}
             </label>
-            {hint && (
-              <p className="work-note" role="status">
-                {hint}
-              </p>
-            )}
-            {!!error && <ErrorNotice error={error} />}
             <button
               className="button button-primary"
               disabled={
                 busy ||
                 recording ||
+                processing ||
                 !confirmed ||
                 ["Pending sync", "Syncing", "Submitted"].includes(status)
               }
