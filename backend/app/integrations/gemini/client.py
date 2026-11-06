@@ -26,7 +26,7 @@ def extract(text: str):
                     system_instruction=instructions,
                     temperature=0,
                     response_mime_type="application/json",
-                    response_schema=ReportFields,
+                    response_json_schema=ReportFields.model_json_schema(),
                 ),
             )
         fields = ReportFields.model_validate_json(result.text or "")
