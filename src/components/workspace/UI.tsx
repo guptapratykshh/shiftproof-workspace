@@ -7,7 +7,14 @@ import {
   type ReactNode,
 } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CheckCircle2, LoaderCircle, X } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  LoaderCircle,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import { usePreferences } from "../../lib/preferences";
 
 const words: Record<string, string> = {
@@ -350,7 +357,6 @@ export function PageTitle({
   return (
     <div className="work-page-title">
       <div>
-        <p className="eyebrow">SHIFTPROOF / {w(title)}</p>
         <h1>{w(title)}</h1>
         {description && <p>{description}</p>}
       </div>
@@ -358,6 +364,40 @@ export function PageTitle({
     </div>
   );
 }
+export function FilterBar({
+  children,
+  activeCount = 0,
+}: {
+  children: ReactNode;
+  activeCount?: number;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const id = useId();
+  const { t } = usePreferences();
+  return (
+    <div className={`filter-bar ${expanded ? "filters-expanded" : ""}`}>
+      <button
+        className="filter-toggle"
+        aria-expanded={expanded}
+        aria-controls={id}
+        onClick={() => setExpanded(!expanded)}
+      >
+        <SlidersHorizontal size={17} />
+        <span>{t("Search and filters", "खोज और फ़िल्टर")}</span>
+        {activeCount > 0 && (
+          <span className="filter-active-count">
+            {activeCount} {t("active", "लागू")}
+          </span>
+        )}
+        <ChevronDown size={17} />
+      </button>
+      <div className="work-filters" id={id}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export function Panel({
   title,
   children,
@@ -393,9 +433,16 @@ export function Modal({
   const heading = useId();
   const w = useWords();
   useEffect(() => {
-    ref.current?.showModal();
     const previous = document.activeElement as HTMLElement;
-    return () => previous?.focus();
+    const previousOverflow = document.body.style.overflow;
+    const dialog = ref.current;
+    document.body.style.overflow = "hidden";
+    dialog?.showModal();
+    return () => {
+      dialog?.close();
+      document.body.style.overflow = previousOverflow;
+      previous?.focus();
+    };
   }, []);
   return (
     <dialog
@@ -423,17 +470,17 @@ export type FieldSpec = {
   name: string;
   label: string;
   type?:
-  | "text"
-  | "email"
-  | "password"
-  | "number"
-  | "date"
-  | "datetime-local"
-  | "time"
-  | "textarea"
-  | "select"
-  | "multi"
-  | "checkbox";
+    | "text"
+    | "email"
+    | "password"
+    | "number"
+    | "date"
+    | "datetime-local"
+    | "time"
+    | "textarea"
+    | "select"
+    | "multi"
+    | "checkbox";
   required?: boolean;
   options?: Option[];
   defaultValue?: string | number | boolean | string[];
@@ -704,9 +751,7 @@ export function FieldsForm({
                   {field.type === "select" ? (
                     <select
                       {...props}
-                      defaultValue={
-                        (field.defaultValue as string) || ""
-                      }
+                      defaultValue={(field.defaultValue as string) || ""}
                     >
                       <option value="">
                         {w(field.required ? "Select an option" : "None")}
@@ -825,10 +870,10 @@ export function formatDate(
 ) {
   return value
     ? new Intl.DateTimeFormat(document.documentElement.lang, {
-      dateStyle: "medium",
-      ...(withTime ? { timeStyle: "short" as const } : {}),
-      timeZone: timezone,
-    }).format(new Date(value))
+        dateStyle: "medium",
+        ...(withTime ? { timeStyle: "short" as const } : {}),
+        timeZone: timezone,
+      }).format(new Date(value))
     : "—";
 }
 export const options = (

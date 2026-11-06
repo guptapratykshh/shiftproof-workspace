@@ -1,0 +1,1207 @@
+{
+  "route_role_combinations": 75,
+  "screens": 150,
+  "page_errors": [],
+  "coverage": [
+    {
+      "role": "public",
+      "route": "/",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/signin",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/signin",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/signin/organization",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/signin/organization",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/signin/supervisor",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/signin/supervisor",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/signin/worker",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/signin/worker",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/signup",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/signup",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/recover/organization",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/recover/organization",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/recover/supervisor",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/recover/supervisor",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/recover/worker",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/recover/worker",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/verify-email",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/verify-email",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/activate",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/activate",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/missing-page",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "public",
+      "route": "/missing-page",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/tasks",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/tasks",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/reports",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/reports",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/handovers",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/handovers",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/alerts",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/alerts",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/notifications",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/notifications",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/settings",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/settings",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/onboarding",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/onboarding",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/departments",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/departments",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/workforce",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/workforce",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/shifts",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/shifts",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/supervisors",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/supervisors",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/policies",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/policies",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/analytics",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/analytics",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/audit",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/audit",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/attention",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/attention",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/conflicts",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/conflicts",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/follow-ups",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/follow-ups",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/departments/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/departments/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/teams/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/teams/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/supervisors/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/supervisors/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/workforce/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/workforce/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/tasks/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/tasks/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/reports/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/reports/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/handovers/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/handovers/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/alerts/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/alerts/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/conflicts/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "organization",
+      "route": "/workspace/conflicts/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/tasks",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/tasks",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/reports",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/reports",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/handovers",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/handovers",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/alerts",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/alerts",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/notifications",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/notifications",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/settings",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/settings",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/attention",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/attention",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/record",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/record",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/drafts",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/drafts",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/workforce",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/workforce",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/shifts",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/shifts",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/analytics",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/analytics",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/conflicts",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/conflicts",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/follow-ups",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/follow-ups",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/departments/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/departments/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/teams/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/teams/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/workforce/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/workforce/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/tasks/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/tasks/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/reports/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/reports/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/handovers/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/handovers/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/alerts/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/alerts/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/conflicts/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "supervisor",
+      "route": "/workspace/conflicts/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/tasks",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/tasks",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/reports",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/reports",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/handovers",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/handovers",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/alerts",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/alerts",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/notifications",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/notifications",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/settings",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/settings",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/record",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/record",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/drafts",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/drafts",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/tasks/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/tasks/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/reports/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/reports/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/handovers/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/handovers/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/alerts/:id",
+      "width": 1440,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    },
+    {
+      "role": "worker",
+      "route": "/workspace/alerts/:id",
+      "width": 390,
+      "horizontal_overflow": false,
+      "clipped_controls": [],
+      "visible_internal_scrollers": []
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import {
   Empty,
   ErrorNotice,
   FieldsForm,
+  FilterBar,
   Modal,
   PageTitle,
   Panel,
@@ -231,7 +232,7 @@ export function WorkforcePage() {
           {w("Add worker")}
         </button>
       </PageTitle>
-      <div className="work-filters">
+      <FilterBar activeCount={Object.values(filter).filter(Boolean).length}>
         <label>
           {w("Search by name")}
           <input
@@ -285,7 +286,7 @@ export function WorkforcePage() {
             <option value="false">{w("Inactive")}</option>
           </select>
         </label>
-      </div>
+      </FilterBar>
       <Panel>
         <When loading={workers.isLoading} error={workers.error}>
           {!workers.data?.items.length ? (

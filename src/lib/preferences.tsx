@@ -42,10 +42,16 @@ function persist(key: string, value: string) {
 
 export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [theme, updateTheme] = useState<Theme>(() => {
-    const previous = saved("shiftproof-theme", ["dark", "light", "system"], "dark");
+    const previous = saved(
+      "shiftproof-theme",
+      ["dark", "light", "system"],
+      "light",
+    );
     // Retain the visible appearance when migrating an older System preference.
     return previous === "system"
-      ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      ? matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light"
       : previous;
   });
   const [language, setLanguage] = useState<Language>(() =>
