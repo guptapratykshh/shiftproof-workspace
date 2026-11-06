@@ -409,7 +409,11 @@ def test_gemini_grounding_rejects_invented_identifiers(monkeypatch):
         def __exit__(self, *_):
             pass
 
-        def generate_content(self, **_):
+        def generate_content(self, **kwargs):
+            # Keep JSON Schema keywords out of Gemini's older Schema format.
+            config = kwargs["config"]
+            assert config.response_schema is None
+            assert config.response_json_schema["additionalProperties"] is False
             return SimpleNamespace(
                 text='{"category":"quality","description":"Inspection pending","machine":"INVENTED-9","batch":"GUESS-5","quantity":99,"suggested_task_id":"foreign-task"}'
             )
