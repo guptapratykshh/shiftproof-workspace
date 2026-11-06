@@ -236,9 +236,19 @@ class ReportFields(Input):
     machine: str | None = Field(default=None, max_length=200)
     work_area: str | None = Field(default=None, max_length=200)
     batch: str | None = Field(default=None, max_length=200)
-    quantity: float | None = Field(default=None, ge=0)
+    order: str | None = Field(default=None, max_length=200)
+    task_reference: str | None = Field(default=None, max_length=200)
+    product: str | None = Field(default=None, max_length=200)
+    reference_period: str | None = Field(default=None, max_length=200)
+    observation_time: str | None = Field(default=None, max_length=200)
+    quantity_basis: Literal["total", "additional"] | None = None
+    quantity: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     unit: str | None = Field(default=None, max_length=40)
     operational_status: str | None = Field(default=None, max_length=200)
+    quality_status: Literal["passed", "rejected", "pending"] | None = None
+    dispatch_status: Literal["dispatched", "pending"] | None = None
+    machine_status: Literal["operational", "maintenance", "stopped", "failed"] | None = None
+    task_status: Literal["completed", "pending"] | None = None
     action_taken: str | None = Field(default=None, max_length=2000)
     safety_implication: str | None = Field(default=None, max_length=2000)
     quality_implication: str | None = Field(default=None, max_length=2000)

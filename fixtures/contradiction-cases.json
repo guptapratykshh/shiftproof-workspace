@@ -1,0 +1,1069 @@
+[
+  {
+    "id": "TC-01",
+    "title": "Quantity mismatch, original Hinglish",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "pieces"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 85,
+        "unit": "pieces"
+      }
+    },
+    "expected": [
+      "quantity_mismatch"
+    ]
+  },
+  {
+    "id": "TC-02",
+    "title": "Quality passed versus rejected",
+    "a": {
+      "text": "Batch 204 ka quality inspection complete ho gaya hai. Saare 50 pieces pass hain. Koi defect nahi mila.",
+      "fields": {
+        "category": "progress",
+        "batch": "BATCH-204",
+        "quantity": 50,
+        "unit": "pieces",
+        "quality_status": "passed"
+      }
+    },
+    "b": {
+      "text": "Batch 204 ke 50 pieces mein surface cracks mile hain. Quality team ne poora batch reject kar diya hai.",
+      "fields": {
+        "category": "progress",
+        "batch": "BATCH-204",
+        "quantity": 50,
+        "unit": "pieces",
+        "quality_status": "rejected"
+      }
+    },
+    "expected": [
+      "quality_status"
+    ]
+  },
+  {
+    "id": "TC-03",
+    "title": "Dispatch versus loading bay",
+    "a": {
+      "text": "Order 501 ka dispatch complete ho gaya hai. Truck factory se nikal chuka hai.",
+      "fields": {
+        "category": "progress",
+        "order": "ORD-501",
+        "dispatch_status": "dispatched"
+      }
+    },
+    "b": {
+      "text": "Order 501 abhi loading bay mein hi pada hai. Truck abhi tak factory se bahar nahi gaya.",
+      "fields": {
+        "category": "progress",
+        "order": "ORD-501",
+        "dispatch_status": "pending"
+      }
+    },
+    "expected": [
+      "dispatch_status"
+    ]
+  },
+  {
+    "id": "TC-04",
+    "title": "Machine operating versus maintenance",
+    "a": {
+      "text": "CNC-05 machine bilkul theek chal rahi hai. Koi technical issue nahi hai aur next shift production continue kar sakti hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-05",
+        "machine_status": "operational"
+      }
+    },
+    "b": {
+      "text": "CNC-05 machine ka hydraulic pressure down hai. Maintenance team ne machine band kar di hai. Abhi production possible nahi hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-05",
+        "machine_status": "maintenance"
+      }
+    },
+    "expected": [
+      "machine_availability"
+    ]
+  },
+  {
+    "id": "TC-05",
+    "title": "Repair completed versus pending testing",
+    "a": {
+      "text": "Conveyor belt ka repair complete ho gaya hai. Maintenance team ne testing bhi kar li hai. Ab machine use kar sakte hain.",
+      "fields": {
+        "category": "progress",
+        "task_reference": "TASK-108",
+        "task_status": "completed"
+      }
+    },
+    "b": {
+      "text": "Conveyor belt ka repair abhi complete nahi hua hai. Maintenance team abhi bhi kaam kar rahi hai. Testing bhi pending hai.",
+      "fields": {
+        "category": "progress",
+        "task_reference": "TASK-108",
+        "task_status": "pending"
+      }
+    },
+    "expected": [
+      "task_completion"
+    ]
+  },
+  {
+    "id": "TC-06",
+    "title": "Different shifts with additional production",
+    "a": {
+      "text": "Morning shift mein 100 pieces manufacture hue.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "quantity": 100,
+        "unit": "pieces",
+        "reference_period": "Morning shift",
+        "quantity_basis": "total"
+      }
+    },
+    "b": {
+      "text": "Evening shift mein 80 additional pieces manufacture hue.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "quantity": 80,
+        "unit": "pieces",
+        "reference_period": "Evening shift",
+        "quantity_basis": "additional"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-01",
+    "title": "Same quantity in different units",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 1,
+        "unit": "kg"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 1000,
+        "unit": "g"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-02",
+    "title": "Different dimensions are not comparable",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "kg"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 85,
+        "unit": "pieces"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-03",
+    "title": "Unit aliases, identical count",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "pcs"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "units"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-04",
+    "title": "Missing unit on one side",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": null
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 85,
+        "unit": "pieces"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-05",
+    "title": "Zero is a real quantity",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 0,
+        "unit": "pieces"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 15,
+        "unit": "pieces"
+      }
+    },
+    "expected": [
+      "quantity_mismatch"
+    ]
+  },
+  {
+    "id": "EDGE-06",
+    "title": "Decimal difference",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 1.5,
+        "unit": "kg"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 1.25,
+        "unit": "kg"
+      }
+    },
+    "expected": [
+      "quantity_mismatch"
+    ]
+  },
+  {
+    "id": "EDGE-07",
+    "title": "Equivalent floating point counts",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 0.30000000000000004,
+        "unit": "pieces"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 0.3,
+        "unit": "pieces"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-08",
+    "title": "Different machine IDs",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "pieces"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-02",
+        "product": "Component X",
+        "quantity": 85,
+        "unit": "pieces"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-09",
+    "title": "Similar but distinct machine IDs",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "pieces"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-010",
+        "product": "Component X",
+        "quantity": 85,
+        "unit": "pieces"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-10",
+    "title": "Different batches on same machine",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "pieces",
+        "batch": "BATCH-204"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 85,
+        "unit": "pieces",
+        "batch": "BATCH-205"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-11",
+    "title": "Different products on same machine",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "pieces"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component Z",
+        "quantity": 85,
+        "unit": "pieces"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-12",
+    "title": "Different work areas explicitly stated",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "pieces",
+        "work_area": "Line A"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 85,
+        "unit": "pieces",
+        "work_area": "Line B"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-13",
+    "title": "Optional location missing",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "pieces",
+        "work_area": "Line A"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 85,
+        "unit": "pieces"
+      }
+    },
+    "expected": [
+      "quantity_mismatch"
+    ]
+  },
+  {
+    "id": "EDGE-14",
+    "title": "Entity case, whitespace, Unicode dash",
+    "a": {
+      "text": "CNC-05 machine bilkul theek chal rahi hai. Koi technical issue nahi hai aur next shift production continue kar sakti hai.",
+      "fields": {
+        "category": "progress",
+        "machine": " cnc ‑ 05 ",
+        "machine_status": "operational"
+      }
+    },
+    "b": {
+      "text": "CNC-05 machine ka hydraulic pressure down hai. Maintenance team ne machine band kar di hai. Abhi production possible nahi hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-05",
+        "machine_status": "maintenance"
+      }
+    },
+    "expected": [
+      "machine_availability"
+    ]
+  },
+  {
+    "id": "EDGE-15",
+    "title": "Order ID prefix aliases",
+    "a": {
+      "text": "Order 501 ka dispatch complete ho gaya hai. Truck factory se nikal chuka hai.",
+      "fields": {
+        "category": "progress",
+        "order": "Order 501",
+        "dispatch_status": "dispatched"
+      }
+    },
+    "b": {
+      "text": "Order 501 abhi loading bay mein hi pada hai. Truck abhi tak factory se bahar nahi gaya.",
+      "fields": {
+        "category": "progress",
+        "order": "ORD-501",
+        "dispatch_status": "pending"
+      }
+    },
+    "expected": [
+      "dispatch_status"
+    ]
+  },
+  {
+    "id": "EDGE-16",
+    "title": "Devanagari ID digits",
+    "a": {
+      "text": "Batch 204 ka quality inspection complete ho gaya hai. Saare 50 pieces pass hain. Koi defect nahi mila.",
+      "fields": {
+        "category": "progress",
+        "batch": "बैच २०४",
+        "quantity": 50,
+        "unit": "pieces",
+        "quality_status": "passed"
+      }
+    },
+    "b": {
+      "text": "Batch 204 ke 50 pieces mein surface cracks mile hain. Quality team ne poora batch reject kar diya hai.",
+      "fields": {
+        "category": "progress",
+        "batch": "BATCH-204",
+        "quantity": 50,
+        "unit": "pieces",
+        "quality_status": "rejected"
+      }
+    },
+    "expected": [
+      "quality_status"
+    ]
+  },
+  {
+    "id": "EDGE-17",
+    "title": "No identified entity",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": null,
+        "product": null,
+        "quantity": 100,
+        "unit": "pieces"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": null,
+        "product": null,
+        "quantity": 85,
+        "unit": "pieces"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-18",
+    "title": "Total versus incremental same period",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "pieces",
+        "quantity_basis": "total"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 85,
+        "unit": "pieces",
+        "quantity_basis": "additional"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-19",
+    "title": "Different metadata shift IDs",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "pieces"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 85,
+        "unit": "pieces"
+      }
+    },
+    "expected": [],
+    "different_shifts": true
+  },
+  {
+    "id": "EDGE-20",
+    "title": "Incoming worker refers to same outgoing period",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "pieces",
+        "reference_period": "Morning shift"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 85,
+        "unit": "pieces",
+        "reference_period": "Morning shift"
+      }
+    },
+    "expected": [
+      "quantity_mismatch"
+    ],
+    "different_shifts": true
+  },
+  {
+    "id": "EDGE-21",
+    "title": "Different explicit reporting dates",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "pieces",
+        "reference_period": "2026-11-05"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 85,
+        "unit": "pieces",
+        "reference_period": "2026-11-06"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-22",
+    "title": "Ambiguous period only on one source",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "pieces",
+        "reference_period": "Morning shift"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 85,
+        "unit": "pieces"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-23",
+    "title": "Real machine state change at later time",
+    "a": {
+      "text": "CNC-05 machine bilkul theek chal rahi hai. Koi technical issue nahi hai aur next shift production continue kar sakti hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-05",
+        "machine_status": "operational",
+        "observation_time": "10:00"
+      }
+    },
+    "b": {
+      "text": "CNC-05 machine ka hydraulic pressure down hai. Maintenance team ne machine band kar di hai. Abhi production possible nahi hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-05",
+        "machine_status": "maintenance",
+        "observation_time": "14:00"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-24",
+    "title": "Different recorded observation times",
+    "a": {
+      "text": "CNC-05 machine bilkul theek chal rahi hai. Koi technical issue nahi hai aur next shift production continue kar sakti hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-05",
+        "machine_status": "operational"
+      }
+    },
+    "b": {
+      "text": "CNC-05 machine ka hydraulic pressure down hai. Maintenance team ne machine band kar di hai. Abhi production possible nahi hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-05",
+        "machine_status": "maintenance"
+      }
+    },
+    "expected": [],
+    "offset_seconds": 3600
+  },
+  {
+    "id": "EDGE-25",
+    "title": "Delayed submissions about same explicit instant",
+    "a": {
+      "text": "CNC-05 machine bilkul theek chal rahi hai. Koi technical issue nahi hai aur next shift production continue kar sakti hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-05",
+        "machine_status": "operational",
+        "observation_time": "10:00"
+      }
+    },
+    "b": {
+      "text": "CNC-05 machine ka hydraulic pressure down hai. Maintenance team ne machine band kar di hai. Abhi production possible nahi hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-05",
+        "machine_status": "maintenance",
+        "observation_time": "10:00"
+      }
+    },
+    "expected": [
+      "machine_availability"
+    ],
+    "offset_seconds": 3600
+  },
+  {
+    "id": "EDGE-26",
+    "title": "Quality inspection pending is a missing update",
+    "a": {
+      "text": "Batch 204 ka quality inspection complete ho gaya hai. Saare 50 pieces pass hain. Koi defect nahi mila.",
+      "fields": {
+        "category": "progress",
+        "batch": "BATCH-204",
+        "quantity": 50,
+        "unit": "pieces",
+        "quality_status": "pending"
+      }
+    },
+    "b": {
+      "text": "Batch 204 ke 50 pieces mein surface cracks mile hain. Quality team ne poora batch reject kar diya hai.",
+      "fields": {
+        "category": "progress",
+        "batch": "BATCH-204",
+        "quantity": 50,
+        "unit": "pieces",
+        "quality_status": "rejected"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-27",
+    "title": "Both workers agree on rejected batch",
+    "a": {
+      "text": "Batch 204 ka quality inspection complete ho gaya hai. Saare 50 pieces pass hain. Koi defect nahi mila.",
+      "fields": {
+        "category": "progress",
+        "batch": "BATCH-204",
+        "quantity": 50,
+        "unit": "pieces",
+        "quality_status": "rejected"
+      }
+    },
+    "b": {
+      "text": "Batch 204 ke 50 pieces mein surface cracks mile hain. Quality team ne poora batch reject kar diya hai.",
+      "fields": {
+        "category": "progress",
+        "batch": "BATCH-204",
+        "quantity": 50,
+        "unit": "pieces",
+        "quality_status": "rejected"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-28",
+    "title": "Maintenance and stopped describe compatible states",
+    "a": {
+      "text": "CNC-05 machine bilkul theek chal rahi hai. Koi technical issue nahi hai aur next shift production continue kar sakti hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-05",
+        "machine_status": "stopped"
+      }
+    },
+    "b": {
+      "text": "CNC-05 machine ka hydraulic pressure down hai. Maintenance team ne machine band kar di hai. Abhi production possible nahi hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-05",
+        "machine_status": "maintenance"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-29",
+    "title": "Unknown machine condition",
+    "a": {
+      "text": "CNC-05 machine bilkul theek chal rahi hai. Koi technical issue nahi hai aur next shift production continue kar sakti hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-05",
+        "machine_status": null,
+        "operational_status": "maybe running"
+      }
+    },
+    "b": {
+      "text": "CNC-05 machine ka hydraulic pressure down hai. Maintenance team ne machine band kar di hai. Abhi production possible nahi hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-05",
+        "machine_status": "maintenance"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-30",
+    "title": "Quantity and quality conflicts retained together",
+    "a": {
+      "text": "Batch 204 ka quality inspection complete ho gaya hai. Saare 50 pieces pass hain. Koi defect nahi mila.",
+      "fields": {
+        "category": "progress",
+        "batch": "BATCH-204",
+        "quantity": 100,
+        "unit": "pieces",
+        "quality_status": "passed"
+      }
+    },
+    "b": {
+      "text": "Batch 204 ke 50 pieces mein surface cracks mile hain. Quality team ne poora batch reject kar diya hai.",
+      "fields": {
+        "category": "progress",
+        "batch": "BATCH-204",
+        "quantity": 85,
+        "unit": "pieces",
+        "quality_status": "rejected"
+      }
+    },
+    "expected": [
+      "quantity_mismatch",
+      "quality_status"
+    ]
+  },
+  {
+    "id": "EDGE-31",
+    "title": "Legacy status synonyms are not contradictions",
+    "a": {
+      "text": "Batch 204 ka quality inspection complete ho gaya hai. Saare 50 pieces pass hain. Koi defect nahi mila.",
+      "fields": {
+        "category": "quality",
+        "batch": "BATCH-204",
+        "quantity": 50,
+        "unit": "pieces",
+        "quality_status": null,
+        "operational_status": "passed"
+      }
+    },
+    "b": {
+      "text": "Batch 204 ke 50 pieces mein surface cracks mile hain. Quality team ne poora batch reject kar diya hai.",
+      "fields": {
+        "category": "quality",
+        "batch": "BATCH-204",
+        "quantity": 50,
+        "unit": "pieces",
+        "quality_status": null,
+        "operational_status": "approved"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-32",
+    "title": "Legacy negated completion is pending",
+    "a": {
+      "text": "Conveyor belt ka repair complete ho gaya hai. Maintenance team ne testing bhi kar li hai. Ab machine use kar sakte hain.",
+      "fields": {
+        "category": "progress",
+        "task_reference": "TASK-108",
+        "task_status": null,
+        "operational_status": "complete"
+      }
+    },
+    "b": {
+      "text": "Conveyor belt ka repair abhi complete nahi hua hai. Maintenance team abhi bhi kaam kar rahi hai. Testing bhi pending hai.",
+      "fields": {
+        "category": "progress",
+        "task_reference": "TASK-108",
+        "task_status": null,
+        "operational_status": "not completed"
+      }
+    },
+    "expected": [
+      "task_completion"
+    ]
+  },
+  {
+    "id": "EDGE-33",
+    "title": "One worker is unsure, no invented quantity",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": null,
+        "unit": "pieces",
+        "uncertainty": [
+          "Please confirm the count."
+        ]
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 85,
+        "unit": "pieces"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-34",
+    "title": "Different tasks on same machine",
+    "a": {
+      "text": "Conveyor belt ka repair complete ho gaya hai. Maintenance team ne testing bhi kar li hai. Ab machine use kar sakte hain.",
+      "fields": {
+        "category": "progress",
+        "task_reference": "TASK-108",
+        "task_status": "completed",
+        "machine": "CNC-05"
+      }
+    },
+    "b": {
+      "text": "Conveyor belt ka repair abhi complete nahi hua hai. Maintenance team abhi bhi kaam kar rahi hai. Testing bhi pending hai.",
+      "fields": {
+        "category": "progress",
+        "task_reference": "TASK-109",
+        "task_status": "pending",
+        "machine": "CNC-05"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-35",
+    "title": "Unknown status text must not be guessed",
+    "a": {
+      "text": "Batch 204 ka quality inspection complete ho gaya hai. Saare 50 pieces pass hain. Koi defect nahi mila.",
+      "fields": {
+        "category": "progress",
+        "batch": "BATCH-204",
+        "quantity": 50,
+        "unit": "pieces",
+        "quality_status": null,
+        "operational_status": "not not failed"
+      }
+    },
+    "b": {
+      "text": "Batch 204 ke 50 pieces mein surface cracks mile hain. Quality team ne poora batch reject kar diya hai.",
+      "fields": {
+        "category": "progress",
+        "batch": "BATCH-204",
+        "quantity": 50,
+        "unit": "pieces",
+        "quality_status": "rejected"
+      }
+    },
+    "expected": []
+  },
+  {
+    "id": "EDGE-36",
+    "title": "Different days without explicit period",
+    "a": {
+      "text": "CNC machine par aaj 100 pieces manufacture hue hain. Saare production records update kar diye hain.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 100,
+        "unit": "pieces"
+      }
+    },
+    "b": {
+      "text": "CNC-01 par total 85 pieces hi manufacture hue the. Production register mein bhi 85 hi mentioned hai.",
+      "fields": {
+        "category": "progress",
+        "machine": "CNC-01",
+        "product": "Component X",
+        "quantity": 85,
+        "unit": "pieces"
+      }
+    },
+    "expected": [],
+    "offset_seconds": 86400
+  }
+]

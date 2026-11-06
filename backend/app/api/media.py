@@ -1,10 +1,12 @@
 from typing import Literal
+import asyncio
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
 
 from ..config import get_settings
 from ..db import get_db, now
@@ -14,13 +16,14 @@ from ..security import admin, current_user, digest, fail, policy_value, require_
 from ..services.common import audit, enqueue, record_dict
 from ..services.reports import check_sensitive_access
 from ..services.retention import expired, retained_job
-from ..services.storage import read_bytes, store_asset, validate_bytes
+from ..services.storage import delete_bytes, read_bytes, store_asset, validate_bytes
 
 router = APIRouter(tags=["Evidence and processing"])
 
 
 @router.post("/files", status_code=201)
 async def upload(
+    request: Request,
     file: UploadFile = File(...),
     department_id: str | None = Form(None),
     kind: str = Form("photo"),
@@ -43,17 +46,33 @@ async def upload(
         fail(403, "Organization policy does not allow this evidence type.")
     content = await file.read(get_settings().max_upload_bytes + 1)
     content, mime = validate_bytes(content, file.content_type or "", kind)
-    item = store_asset(db, user, content, file.filename or "evidence", mime, kind, department_id, consent)
-    audit(
-        db,
-        user,
-        user.organization_id,
-        "evidence.uploaded",
-        "file_asset",
-        item.id,
-        after={"kind": kind, "bytes": len(content)},
-    )
-    return record_dict(item)
+    for attempt in range(4):
+        item = None
+        try:
+            if attempt:
+                user = current_user(request, db)
+                if kind == "logo":
+                    admin(user)
+                else:
+                    require_department(db, user, department_id, active=True)
+                privacy = policy_value(db, user.organization_id, "privacy")
+                if kind in {"photo", "video"} and not privacy.get(
+                    "photos_allowed" if kind == "photo" else "videos_allowed", True
+                ):
+                    fail(403, "Organization policy does not allow this evidence type.")
+            item = store_asset(db, user, content, file.filename or "evidence", mime, kind, department_id, consent)
+            audit(db, user, user.organization_id, "evidence.uploaded", "file_asset", item.id,
+                  after={"kind": kind, "bytes": len(content)})
+            if db.bind.dialect.name == "mongodb":
+                db.commit()
+            return record_dict(item)
+        except StaleDataError:
+            db.rollback()
+            if item:
+                delete_bytes(item)
+            if db.bind.dialect.name != "mongodb" or attempt == 3:
+                raise
+            await asyncio.sleep(0.1 * 2**attempt)
 
 
 @router.get("/files/{record_id}")

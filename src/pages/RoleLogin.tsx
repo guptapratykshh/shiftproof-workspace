@@ -102,7 +102,7 @@ function LoginForm({ role }: { role: AuthRole }) {
         window.location.assign(result.redirectPath);
       else setSignedIn(true);
     } catch (cause) {
-      setError(authErrorMessage(cause, t));
+      setError(authErrorMessage(cause, t, "login"));
     }
   };
   return (

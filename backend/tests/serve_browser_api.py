@@ -8,7 +8,9 @@ import sys
 if os.environ.get("SHIFTPROOF_BROWSER_TEST") != "1":
     raise SystemExit("This entry point is only for the isolated browser test suite")
 
-root = Path("/tmp/shiftproof-browser-qa")
+port = int(os.environ.get("SHIFTPROOF_BROWSER_PORT", "8001"))
+frontend_port = int(os.environ.get("SHIFTPROOF_BROWSER_FRONTEND_PORT", "5175"))
+root = Path(os.environ.get("SHIFTPROOF_BROWSER_ROOT", "/tmp/shiftproof-browser-qa"))
 root.mkdir(mode=0o700, exist_ok=True)
 database = root / "browser-tests.db"
 mongo_url = os.environ.get("SHIFTPROOF_BROWSER_DATABASE_URL", "")
@@ -17,8 +19,8 @@ for path in (database, Path(str(database) + "-wal"), Path(str(database) + "-shm"
 os.environ.update(
     DATABASE_URL=mongo_url or f"sqlite:///{database}",
     APP_ENV="test",
-    FRONTEND_URL="http://127.0.0.1:5175",
-    ALLOWED_ORIGINS='["http://127.0.0.1:5175"]',
+    FRONTEND_URL=f"http://127.0.0.1:{frontend_port}",
+    ALLOWED_ORIGINS=f'["http://127.0.0.1:{frontend_port}"]',
     MAIL_MODE="file",
     COOKIE_SECURE="false",
     STORAGE_DIRECTORY=str(root / "evidence"),
@@ -36,7 +38,7 @@ subprocess.run([sys.executable, "-m", "app.bootstrap"], check=True)
 import uvicorn
 
 try:
-    uvicorn.run("app.main:app", host="127.0.0.1", port=8001, access_log=False)
+    uvicorn.run("app.main:app", host="127.0.0.1", port=port, access_log=False)
 finally:
     if mongo_url:
         engine.client.drop_database(engine.database.name)

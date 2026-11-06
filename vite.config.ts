@@ -5,6 +5,11 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    watch: {
+      // Generating QA reports or runtime artifacts must not reload a worker's
+      // in-progress form in the live development preview.
+      ignored: ["**/.sites-*/**", "**/test-results/**", "**/playwright-report/**", "**/artifacts/**", "**/backend/**"],
+    },
     fs: {
       // A forwarded development server must never serve backend or runtime files.
       deny: [

@@ -13,6 +13,7 @@ from ..models import (
     Clarification,
     Conflict,
     ConflictReport,
+    Department,
     DepartmentMembership,
     FileAsset,
     Organization,
@@ -30,6 +31,7 @@ from ..models import (
 from ..schemas import ReportInput
 from ..security import department_ids, fail, policy_value, require_department, scoped
 from .common import audit, notify, record_dict
+from .contradictions import compare, summary
 from .retention import retained_record
 
 
@@ -191,10 +193,9 @@ def append_version(db: Session, user: User, report: Report, values: ReportInput,
 
 def detect_conflicts(db: Session, report: Report, version: ReportVersion):
     fields = version.fields
-    # Conservative exact-context comparison. Candidate disagreement is never a resolution.
-    if not (fields.get("batch") or fields.get("machine")):
+    if not any(fields.get(key) for key in ("batch", "machine", "order", "task_reference")):
         return
-    candidates = db.scalars(
+    candidates = list(db.scalars(
         select(Report)
         .where(
             Report.organization_id == report.organization_id,
@@ -204,31 +205,32 @@ def detect_conflicts(db: Session, report: Report, version: ReportVersion):
             Report.occurred_at <= report.occurred_at + timedelta(hours=24),
         )
         .order_by(Report.created_at.desc())
-        .limit(100)
-    )
+    ))
+    if not candidates:
+        return
+    # Batch-load versions; do not silently ignore a matching report when more
+    # than 100 unrelated updates have arrived in a busy department.
+    latest = {item.id: item.latest_version for item in candidates}
+    timezone = db.get(Organization, report.organization_id).timezone
+    versions = {item.report_id: item for item in db.scalars(
+        select(ReportVersion).where(ReportVersion.report_id.in_(list(latest)))
+    ) if item.number == latest[item.report_id]}
     for previous in candidates:
-        other = db.scalar(
-            select(ReportVersion).where(
-                ReportVersion.report_id == previous.id, ReportVersion.number == previous.latest_version
-            )
-        )
+        other = versions.get(previous.id)
         if not other:
             continue
-        matching = all(fields.get(key) == other.fields.get(key) for key in ("batch", "machine", "work_area"))
-        differing = [
-            key
-            for key in ("quantity", "operational_status")
-            if fields.get(key) is not None
-            and other.fields.get(key) is not None
-            and fields[key] != other.fields[key]
-        ]
-        if not matching or not differing:
+        findings = compare(fields, other.fields, report, previous, timezone)
+        if not findings:
             continue
         already = db.scalar(
             select(ConflictReport.conflict_id).where(
                 ConflictReport.report_id == report.id,
+                ConflictReport.version_number == version.number,
                 ConflictReport.conflict_id.in_(
-                    select(ConflictReport.conflict_id).where(ConflictReport.report_id == previous.id)
+                    select(ConflictReport.conflict_id).where(
+                        ConflictReport.report_id == previous.id,
+                        ConflictReport.version_number == other.number,
+                    )
                 ),
             )
         )
@@ -237,8 +239,8 @@ def detect_conflicts(db: Session, report: Report, version: ReportVersion):
         conflict = Conflict(
             organization_id=report.organization_id,
             department_id=report.department_id,
-            title="Related reports need comparison",
-            discrepancy=f"Different {', '.join(differing)} values were reported for the same context. These may describe different moments; review both sources.",
+            title=" / ".join(finding["title"] for finding in findings)[:200],
+            discrepancy=summary(findings),
         )
         db.add(conflict)
         db.flush()
@@ -274,6 +276,15 @@ def detect_conflicts(db: Session, report: Report, version: ReportVersion):
         attention(db, report, f"conflict:{conflict.id}", conflict.discrepancy)
 
 
+def lock_comparison_context(db: Session, user: User, department_id: str):
+    # Two different workers can submit at once. A shared departmental write
+    # forces one transaction to retry against the other's committed report,
+    # avoiding two snapshots that each see no counterpart.
+    db.execute(update(Department).where(
+        Department.id == department_id, Department.organization_id == user.organization_id,
+    ).values(updated_at=now()))
+
+
 def submit(db: Session, user: User, values: ReportInput):
     # Serialize one reporter's retries before checking the unique submission key.
     db.execute(update(User).where(User.id == user.id).values(updated_at=now()))
@@ -295,6 +306,7 @@ def submit(db: Session, user: User, values: ReportInput):
             )
         return existing
     validate_sources(db, user, values)
+    lock_comparison_context(db, user, values.department_id)
     fields = values.fields
     required_evidence = policy_value(db, user.organization_id, "operations").get(
         "evidence_required_categories", []

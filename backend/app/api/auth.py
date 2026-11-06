@@ -1,8 +1,10 @@
 import secrets
+import time
 
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
 
 from ..config import get_settings
 from ..db import get_db
@@ -36,7 +38,19 @@ def verify(values: TokenInput, db: Session = Depends(get_db, scope="function")):
 
 @router.post("/login/{role}")
 def login(role: str, values: Login, request: Request, response: Response, db: Session = Depends(get_db, scope="function")):
-    return service.login(db, role, values, request, response)
+    for attempt in range(4):
+        try:
+            result = service.login(db, role, values, request, response)
+            if db.bind.dialect.name == "mongodb":
+                db.commit()
+            return result
+        except StaleDataError:
+            if db.bind.dialect.name != "mongodb" or attempt == 3:
+                raise
+            db.rollback()
+            # Discard cookies from the aborted session before issuing new ones.
+            response.raw_headers = [(key, value) for key, value in response.raw_headers if key != b"set-cookie"]
+            time.sleep(0.1 * 2**attempt)
 
 
 @router.post("/activate")

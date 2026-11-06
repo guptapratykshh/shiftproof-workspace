@@ -132,6 +132,16 @@ export type ReportFields = {
   machine?: string | null;
   work_area?: string | null;
   batch?: string | null;
+  order?: string | null;
+  task_reference?: string | null;
+  product?: string | null;
+  reference_period?: string | null;
+  observation_time?: string | null;
+  quantity_basis?: "total" | "additional" | null;
+  quality_status?: "passed" | "rejected" | "pending" | null;
+  dispatch_status?: "dispatched" | "pending" | null;
+  machine_status?: "operational" | "maintenance" | "stopped" | "failed" | null;
+  task_status?: "completed" | "pending" | null;
   quantity?: number | null;
   unit?: string | null;
   operational_status?: string | null;
@@ -243,6 +253,15 @@ export type Conflict = Base & {
   department_id: string;
   version: number;
   reports?: (Report & { linked_version: number })[];
+  findings?: {
+    category: string;
+    title: string;
+    severity: string;
+    values: (string | number)[];
+    difference?: number;
+    difference_unit?: string | null;
+    recommended_action: string;
+  }[];
 };
 export type HandoverItem = Base & {
   title: string;

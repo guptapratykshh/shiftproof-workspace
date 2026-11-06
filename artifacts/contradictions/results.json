@@ -1,0 +1,229 @@
+{
+  "date": "2026-11-06",
+  "browser": "Google Chrome",
+  "live_url": "https://supervisors-profit-suse-ties.trycloudflare.com",
+  "live_scenarios": {
+    "TC-01": {
+      "status": "passed",
+      "expected": [
+        "quantity_mismatch"
+      ]
+    },
+    "TC-02": {
+      "status": "passed",
+      "expected": [
+        "quality_status"
+      ]
+    },
+    "TC-03": {
+      "status": "passed",
+      "expected": [
+        "dispatch_status"
+      ]
+    },
+    "TC-04": {
+      "status": "passed",
+      "expected": [
+        "machine_availability"
+      ]
+    },
+    "TC-05": {
+      "status": "passed",
+      "expected": [
+        "task_completion"
+      ]
+    },
+    "TC-06": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-01": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-02": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-03": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-04": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-05": {
+      "status": "passed",
+      "expected": [
+        "quantity_mismatch"
+      ]
+    },
+    "EDGE-06": {
+      "status": "passed",
+      "expected": [
+        "quantity_mismatch"
+      ]
+    },
+    "EDGE-07": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-08": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-09": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-10": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-11": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-12": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-13": {
+      "status": "passed",
+      "expected": [
+        "quantity_mismatch"
+      ]
+    },
+    "EDGE-14": {
+      "status": "passed",
+      "expected": [
+        "machine_availability"
+      ]
+    },
+    "EDGE-15": {
+      "status": "passed",
+      "expected": [
+        "dispatch_status"
+      ]
+    },
+    "EDGE-16": {
+      "status": "passed",
+      "expected": [
+        "quality_status"
+      ]
+    },
+    "EDGE-17": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-18": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-19": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-20": {
+      "status": "passed",
+      "expected": [
+        "quantity_mismatch"
+      ]
+    },
+    "EDGE-21": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-22": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-23": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-24": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-25": {
+      "status": "passed",
+      "expected": [
+        "machine_availability"
+      ]
+    },
+    "EDGE-26": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-27": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-28": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-29": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-30": {
+      "status": "passed",
+      "expected": [
+        "quantity_mismatch",
+        "quality_status"
+      ]
+    },
+    "EDGE-31": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-32": {
+      "status": "passed",
+      "expected": [
+        "task_completion"
+      ]
+    },
+    "EDGE-33": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-34": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-35": {
+      "status": "passed",
+      "expected": []
+    },
+    "EDGE-36": {
+      "status": "passed",
+      "expected": []
+    }
+  },
+  "browser_errors": [],
+  "speech_note": "Speech validation is recorded separately in docs/contradiction-validation.md.",
+  "backend": {
+    "passed": 131,
+    "skipped_mongo_only": 4
+  },
+  "chrome_contradiction_cases": 42,
+  "chrome_public_cases": 17,
+  "chrome_workspace_cases": 10,
+  "mongo_regression_cases": 88,
+  "mongo_focused_cases": 10,
+  "live_extraction_calls": 18,
+  "voice_recording_cases": 2,
+  "noisy_speech_passed": true,
+  "silence_passed": true,
+  "voice_resolution": {
+    "critical_quality_conflict": true,
+    "original_audio_transcripts_extractions_retained": true,
+    "real_gnani_readback_bytes": 970284,
+    "supervisor_resolution": "resolved",
+    "original_sources_unchanged": true,
+    "conflict_id": "17c6867d-a119-4992-a472-9e11decf32fa"
+  }
+}

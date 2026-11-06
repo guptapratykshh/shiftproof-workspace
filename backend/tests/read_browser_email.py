@@ -3,11 +3,13 @@
 import os
 import re
 import sys
+from pathlib import Path
 
 from sqlalchemy import select
 
 url = os.environ.get("SHIFTPROOF_BROWSER_DATABASE_URL", "")
-os.environ["DATABASE_URL"] = url or "sqlite:////tmp/shiftproof-browser-qa/browser-tests.db"
+root = Path(os.environ.get("SHIFTPROOF_BROWSER_ROOT", "/tmp/shiftproof-browser-qa"))
+os.environ["DATABASE_URL"] = url or f"sqlite:///{root / 'browser-tests.db'}"
 
 from app.db import SessionLocal, engine
 from app.models import BackgroundJob

@@ -418,6 +418,7 @@ export function HandoversPage() {
                 onClose={() => setPublishing(false)}
               >
                 <FieldsForm
+                  submitLabel="Publish version"
                   fields={[
                     {
                       name: "notes",

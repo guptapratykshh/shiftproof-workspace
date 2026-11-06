@@ -74,6 +74,7 @@ export async function requestAuth(
 export function authErrorMessage(
   error: unknown,
   t: (english: string, hindi: string) => string,
+  action?: AuthAction,
 ): string {
   if (error instanceof AuthRequestError) {
     if (error.reason === "unavailable")
@@ -90,6 +91,11 @@ export function authErrorMessage(
       return t(
         "Too many attempts. Please wait a little before trying again.",
         "बहुत अधिक प्रयास हुए हैं। थोड़ा इंतज़ार करके फिर कोशिश करें।",
+      );
+    if (error.status === 409)
+      if (action === "login") return t(
+        "Sign-in changed while processing. Please try signing in again; your entries are still here.",
+        "साइन इन के दौरान जानकारी बदली। कृपया फिर साइन इन करें; भरी हुई जानकारी यहीं है।",
       );
     if (error.status === 409)
       return t(
