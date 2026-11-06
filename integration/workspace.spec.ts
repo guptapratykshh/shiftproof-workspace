@@ -31,9 +31,12 @@ async function checkWorkspaceLayout(page: Page, label: string, width: number) {
   await expect(page.locator(".workspace-content h1"), label).toBeVisible();
   await expect(page.locator(".work-loading")).toHaveCount(0);
   await page.evaluate(() => document.fonts.ready);
-  await page.evaluate(() => new Promise<void>((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-  }));
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
   const layout = await page.evaluate(() => {
     const grid = document
       .querySelector(".workspace-grid")!
@@ -53,11 +56,13 @@ async function checkWorkspaceLayout(page: Page, label: string, width: number) {
           if (
             ["auto", "scroll"].includes(getComputedStyle(parent).overflowX) &&
             parent.scrollWidth > parent.clientWidth + 1
-          ) return false;
+          )
+            return false;
           parent = parent.parentElement;
         }
         return (
-          box.left < -1 || box.right > innerWidth + 1 ||
+          box.left < -1 ||
+          box.right > innerWidth + 1 ||
           (!["INPUT", "SELECT", "TEXTAREA"].includes(element.tagName) &&
             element.scrollWidth > element.clientWidth + 1)
         );
@@ -74,8 +79,11 @@ async function checkWorkspaceLayout(page: Page, label: string, width: number) {
     };
   });
   const gutter =
-    width <= 600 ? 16 : width <= 1000 ? 24
-      : Math.min(48, Math.max(32, width * 0.025));
+    width <= 600
+      ? 16
+      : width <= 1000
+        ? 24
+        : Math.min(48, Math.max(32, width * 0.025));
   expect(layout.width, label).toBeLessThanOrEqual(width + 1);
   expect(layout.gridLeft, label).toBe(0);
   expect(layout.gridWidth, label).toBe(width);
@@ -100,7 +108,11 @@ function deliveryToken(email: string) {
   return execFileSync(
     path.resolve("backend/.venv/bin/python"),
     ["tests/read_browser_email.py", email],
-    { encoding: "utf8", cwd: path.resolve("backend"), env: { ...process.env, PYTHONPATH: "." } },
+    {
+      encoding: "utf8",
+      cwd: path.resolve("backend"),
+      env: { ...process.env, PYTHONPATH: "." },
+    },
   ).trim();
 }
 async function send(
@@ -302,7 +314,9 @@ test("worker completes critical work and supervisor verifies it through the real
     .getByRole("button", { name: "Save changes" })
     .click();
   await expect(page.getByRole("dialog")).toBeHidden();
-  await expect(page.locator(".work-tags").first().getByText("verified", { exact: true })).toBeVisible();
+  await expect(
+    page.locator(".work-tags").first().getByText("verified", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await expect(
     page.locator(".work-tags").first().getByText("closed", { exact: true }),
@@ -423,12 +437,16 @@ test("admin and supervisor routes remain usable across target widths, themes and
     for (const route of routes) {
       await page.goto(`/workspace${route}`);
       if (route === "/settings") {
-        await expect(page.getByRole("combobox", { name: /^(Appearance|दिखावट)$/ })).toHaveCount(0);
+        await expect(
+          page.getByRole("combobox", { name: /^(Appearance|दिखावट)$/ }),
+        ).toHaveCount(0);
       }
       for (const width of layoutWidths) {
         await page.setViewportSize({ width, height: 1000 });
         await checkWorkspaceLayout(
-          page, `${route}, ${appearance.language}, ${width}px`, width,
+          page,
+          `${route}, ${appearance.language}, ${width}px`,
+          width,
         );
       }
     }
@@ -716,12 +734,20 @@ test("operational detail pages and task views fit every target width for both ro
         for (const width of layoutWidths) {
           await page.setViewportSize({ width, height: 1000 });
           await checkWorkspaceLayout(
-            page, `${role} ${route}, ${appearance.language}, ${width}px`, width,
+            page,
+            `${role} ${route}, ${appearance.language}, ${width}px`,
+            width,
           );
-          if (role === "supervisor" && appearance.language === "en" && width === 320
-            && ["/attention", "/notifications"].includes(route)) {
+          if (
+            role === "supervisor" &&
+            appearance.language === "en" &&
+            width === 320 &&
+            ["/attention", "/notifications"].includes(route)
+          ) {
             await page.screenshot({
-              path: testInfo.outputPath(`supervisor-${route.slice(1)}-mobile.png`),
+              path: testInfo.outputPath(
+                `supervisor-${route.slice(1)}-mobile.png`,
+              ),
               fullPage: true,
               animations: "disabled",
             });
@@ -762,4 +788,200 @@ test("operational detail pages and task views fit every target width for both ro
     }
   }
   expect(errors).toEqual([]);
+});
+
+async function voiceCapabilities(page: Page) {
+  await page.route("**/api/v1/voice/capabilities", (route) =>
+    route.fulfill({
+      json: { transcription: true, playback: true, extraction: true },
+    }),
+  );
+}
+
+async function fakeRecorder(page: Page) {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: {
+        getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }),
+      },
+    });
+    class Recorder {
+      static isTypeSupported() {
+        return true;
+      }
+      state = "inactive";
+      mimeType = "audio/webm";
+      ondataavailable: ((value: { data: Blob }) => void) | null = null;
+      onstop: (() => void) | null = null;
+      start() {
+        this.state = "recording";
+      }
+      stop() {
+        this.state = "inactive";
+        this.ondataavailable?.({
+          data: new Blob(["synthetic audio"], { type: this.mimeType }),
+        });
+        this.onstop?.();
+      }
+    }
+    Object.defineProperty(window, "MediaRecorder", {
+      configurable: true,
+      value: Recorder,
+    });
+  });
+}
+
+test("voice recording transcribes on stop, cancels safely and preserves a correction made during processing", async ({
+  page,
+}) => {
+  await fakeRecorder(page);
+  await voiceCapabilities(page);
+  let uploads = 0;
+  await page.route("**/api/v1/files", (route) => {
+    uploads++;
+    return route.fulfill({ status: 201, json: { id: "audio-test" } });
+  });
+  await page.route("**/api/v1/transcriptions", (route) =>
+    route.fulfill({ status: 202, json: { id: "transcription-test" } }),
+  );
+  let finish = false;
+  await page.route("**/api/v1/jobs/transcription-test", (route) =>
+    route.fulfill({
+      json: {
+        id: "transcription-test",
+        status: finish ? "succeeded" : "processing",
+        result: finish
+          ? { text: "Inspection complete.", transcript_id: "transcript-test" }
+          : {},
+      },
+    }),
+  );
+  await login(page, "worker");
+  await page.goto("/workspace/record");
+  await page
+    .getByLabel(
+      "I consent to recording and authorized review under my organization’s retention policy.",
+    )
+    .check();
+  await page
+    .getByRole("button", { name: "Start recording", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Cancel recording", exact: true })
+    .click();
+  await expect(
+    page.getByText("Recording cancelled. Your previous update is unchanged."),
+  ).toBeVisible();
+  expect(uploads).toBe(0);
+  await page
+    .getByRole("button", { name: "Start recording", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Stop recording", exact: true })
+    .click();
+  await expect.poll(() => uploads).toBe(1);
+  await expect(
+    page.getByText(
+      "Preparing your update. You can keep reading; nothing is submitted yet.",
+    ),
+  ).toBeVisible();
+  const text = page.getByLabel("Your update — type or correct the transcript");
+  await text.fill("Inspection is NOT complete.");
+  finish = true;
+  await expect(
+    page.getByText(
+      "Your edits were kept. Process the updated words again if needed.",
+    ),
+  ).toBeVisible();
+  await expect(text).toHaveValue("Inspection is NOT complete.");
+  await expect(
+    page.getByRole("button", { name: "Submit report", exact: true }),
+  ).toBeDisabled();
+  // The same saved recording can be explicitly processed again.
+  await page
+    .getByRole("button", { name: "Turn recording into text", exact: true })
+    .click();
+  await expect(text).toHaveValue("Inspection complete.");
+});
+
+test("spoken review is optional, clears on edit and fits Hindi mobile and desktop", async ({
+  page,
+}, testInfo) => {
+  await voiceCapabilities(page);
+  const scripts: string[] = [];
+  await page.route("**/api/v1/report-readback", (route) => {
+    scripts.push(route.request().postDataJSON().text);
+    return route.fulfill({ status: 202, json: { id: "readback-test" } });
+  });
+  await page.route("**/api/v1/jobs/readback-test", (route) =>
+    route.fulfill({
+      json: {
+        id: "readback-test",
+        status: "succeeded",
+        result: { asset_id: "speech-test", script: scripts.at(-1) },
+      },
+    }),
+  );
+  const wav = Buffer.alloc(3244);
+  wav.write("RIFF");
+  wav.writeUInt32LE(3236, 4);
+  wav.write("WAVEfmt ", 8);
+  wav.writeUInt32LE(16, 16);
+  wav.writeUInt16LE(1, 20);
+  wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(16000, 24);
+  wav.writeUInt32LE(32000, 28);
+  wav.writeUInt16LE(2, 32);
+  wav.writeUInt16LE(16, 34);
+  wav.write("data", 36);
+  wav.writeUInt32LE(3200, 40);
+  let downloads = 0;
+  await page.route("**/api/v1/files/speech-test", (route) => {
+    downloads++;
+    return downloads === 1
+      ? route.fulfill({
+          status: 503,
+          json: { detail: "Audio download interrupted." },
+        })
+      : route.fulfill({ contentType: "audio/wav", body: wav });
+  });
+  await login(page, "worker");
+  await page.goto("/workspace/record");
+  const text = page.getByLabel("Your update — type or correct the transcript");
+  await text.fill("120 boxes packed. Inspection is still pending.");
+  await page
+    .getByRole("button", { name: "Listen to my update", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Try listening again", exact: true })
+    .click();
+  await expect(page.locator(".voice-playback audio")).toBeVisible();
+  expect(downloads).toBe(2);
+  expect(scripts).toEqual(["120 boxes packed. Inspection is still pending."]);
+  await page
+    .getByLabel("I reviewed this report and any uncertainty is stated clearly.")
+    .check();
+  await expect(
+    page.getByRole("button", { name: "Submit report", exact: true }),
+  ).toBeEnabled();
+  await text.fill("118 boxes packed. Inspection is still pending.");
+  await expect(page.locator(".voice-playback audio")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Submit report", exact: true }),
+  ).toBeDisabled();
+  await page.screenshot({
+    path: testInfo.outputPath("voice-review-desktop.png"),
+    fullPage: true,
+  });
+  await setAppearance(page, appearances[1]);
+  for (const width of [320, 390, 768, 1470]) {
+    await page.setViewportSize({ width, height: 900 });
+    await checkWorkspaceLayout(page, "Hindi voice review " + width, width);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: testInfo.outputPath("voice-review-hindi-mobile.png"),
+    fullPage: true,
+  });
 });

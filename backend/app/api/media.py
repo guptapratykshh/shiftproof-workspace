@@ -9,12 +9,12 @@ from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..db import get_db, now
 from ..models import BackgroundJob, FileAsset, HandoverVersion, TaskEvidence, Transcript, User
-from ..schemas import Input
-from ..security import admin, current_user, fail, policy_value, require_department, scoped
+from ..schemas import Input, ReportFields
+from ..security import admin, current_user, digest, fail, policy_value, require_department, scoped
 from ..services.common import audit, enqueue, record_dict
 from ..services.reports import check_sensitive_access
-from ..services.storage import read_bytes, store_asset, validate_bytes
 from ..services.retention import expired, retained_job
+from ..services.storage import read_bytes, store_asset, validate_bytes
 
 router = APIRouter(tags=["Evidence and processing"])
 
@@ -58,7 +58,10 @@ async def upload(
 
 @router.get("/files/{record_id}")
 def download(
-    record_id: str, purpose: str = "", user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
+    record_id: str,
+    purpose: str = "",
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db, scope="function"),
 ):
     asset = scoped(db, FileAsset, record_id, user)
     if asset.deleted_at or (asset.retention_until and asset.retention_until <= now()):
@@ -94,10 +97,26 @@ def download(
 class TranscriptionInput(Input):
     asset_id: str
     language: Literal["hi-IN", "en-IN", "hi-IN,en-IN"] = "hi-IN,en-IN"
+    task_id: str | None = None
+
+
+@router.get("/voice/capabilities")
+def voice_capabilities(user: User = Depends(current_user)):
+    settings = get_settings()
+    return {
+        "transcription": bool(settings.gnani_api_key),
+        "playback": bool(settings.gnani_api_key),
+        "extraction": bool(settings.gemini_api_key),
+        "max_recording_seconds": 29,
+    }
 
 
 @router.post("/transcriptions", status_code=202)
-def transcribe(values: TranscriptionInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
+def transcribe(
+    values: TranscriptionInput,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db, scope="function"),
+):
     asset = scoped(db, FileAsset, values.asset_id, user)
     if (
         asset.owner_id != user.id
@@ -112,15 +131,60 @@ def transcribe(values: TranscriptionInput, user: User = Depends(current_user), d
             503,
             "Speech transcription is not configured. Your recording is saved; type your update to continue.",
         )
+    from ..services.voice import transcription_context
+
+    transcription_context(db, user, asset.department_id, values.task_id)
     job = enqueue(
         db,
         "transcribe",
-        f"transcribe:{asset.id}:{values.language}",
+        f"transcribe:{asset.id}:{values.language}:{values.task_id or ''}",
         values.model_dump(),
         user.organization_id,
         user.id,
     )
     return record_dict(job, {"payload", "lease_token"})
+
+
+class PlaybackInput(Input):
+    language: Literal["hi-IN", "en-IN", "auto"] = "auto"
+
+
+class ReadbackInput(PlaybackInput):
+    department_id: str
+    text: str = Field(min_length=1, max_length=20000)
+    fields: ReportFields = Field(default_factory=ReportFields)
+    immediate_safety: bool = False
+
+
+def queue_playback(db, user, text, department_id, language, source):
+    settings = get_settings()
+    if not settings.gnani_api_key:
+        fail(503, "Spoken playback is not configured. Review your update in writing.")
+    fingerprint = digest(
+        f"{text}:{language}:{settings.gnani_tts_model}:{settings.gnani_tts_voice}:{settings.gnani_tts_speed}"
+    )
+    job = enqueue(
+        db,
+        "speak",
+        f"speak:{user.id}:{department_id}:{source}:{fingerprint}",
+        {"text": text, "department_id": department_id, "language": language, "source": source},
+        user.organization_id,
+        user.id,
+    )
+    return record_dict(job, {"payload", "lease_token"})
+
+
+@router.post("/report-readback", status_code=202)
+def report_readback(
+    values: ReadbackInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
+):
+    from ..services.voice import report_script
+
+    require_department(db, user, values.department_id, active=True)
+    if not values.text.strip():
+        fail(422, "Add your update before listening.")
+    script = report_script(values.text, values.fields, values.language, values.immediate_safety)
+    return queue_playback(db, user, script, values.department_id, values.language, "report-readback")
 
 
 class ExtractionInput(Input):
@@ -129,7 +193,11 @@ class ExtractionInput(Input):
 
 
 @router.post("/extractions", status_code=202)
-def extract(values: ExtractionInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
+def extract(
+    values: ExtractionInput,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db, scope="function"),
+):
     if not get_settings().gemini_api_key:
         fail(503, "AI extraction is not configured. Complete and review the report fields manually.")
     if values.transcript_id:
@@ -159,7 +227,9 @@ def extract(values: ExtractionInput, user: User = Depends(current_user), db: Ses
 
 
 @router.get("/jobs/{record_id}")
-def job_status(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
+def job_status(
+    record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
+):
     job = scoped(db, BackgroundJob, record_id, user)
     if job.actor_id != user.id:
         fail(403, "This processing request belongs to another account.")
@@ -167,7 +237,9 @@ def job_status(record_id: str, user: User = Depends(current_user), db: Session =
 
 
 @router.post("/jobs/{record_id}/retry")
-def retry(record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
+def retry(
+    record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
+):
     job = scoped(db, BackgroundJob, record_id, user)
     if job.actor_id != user.id or job.kind not in {"transcribe", "extract", "speak"}:
         fail(403, "This job cannot be retried from this account.")
@@ -180,28 +252,23 @@ def retry(record_id: str, user: User = Depends(current_user), db: Session = Depe
 
 
 @router.post("/handover-audio/{version_id}", status_code=202)
-def handover_audio(version_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
+def handover_audio(
+    version_id: str,
+    values: PlaybackInput | None = None,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db, scope="function"),
+):
     from ..services.handovers import visible_handover
+    from ..services.voice import handover_script
 
     version = scoped(db, HandoverVersion, version_id, user)
     handover = visible_handover(db, user, version.handover_id)
-    if not get_settings().gnani_api_key:
-        fail(503, "Handover audio is not configured. The written handover is available.")
-    text = (
-        ("Pending supervisor review. " if version.provisional else "Published handover. ")
-        + version.snapshot.get("notes", "")
-        + ". "
-        + ". ".join(
-            f"{item['title']}. Status: {item['detail'].get('status', 'pending')}"
-            for item in version.snapshot.get("items", [])
-        )
-    )
-    job = enqueue(
+    language = values.language if values else "auto"
+    return queue_playback(
         db,
-        "speak",
-        f"speak:{version.id}:{user.id}",
-        {"text": text, "department_id": handover.department_id},
-        user.organization_id,
-        user.id,
+        user,
+        handover_script(version, language),
+        handover.department_id,
+        language,
+        f"handover:{version.id}",
     )
-    return record_dict(job, {"payload", "lease_token"})
