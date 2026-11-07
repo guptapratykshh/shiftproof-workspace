@@ -242,7 +242,7 @@ class ReportFields(Input):
     reference_period: str | None = Field(default=None, max_length=200)
     observation_time: str | None = Field(default=None, max_length=200)
     quantity_basis: Literal["total", "additional"] | None = None
-    quantity_stage: Literal["manufactured", "dispatched", "received"] | None = None
+    quantity_stage: Literal["manufactured", "packed", "ready_for_dispatch", "dispatched", "received"] | None = None
     transfer_reference: str | None = Field(default=None, max_length=200)
     transfer_complete: bool | None = None
     quantity: float | None = Field(default=None, ge=0, allow_inf_nan=False)
