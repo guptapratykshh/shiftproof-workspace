@@ -9,7 +9,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Header } from "../components/Header";
-import { FactoryScene } from "../components/FactoryScene";
+import { IndustryScene } from "../components/IndustryScene";
 import { industries } from "../lib/industries";
 import { usePreferences } from "../lib/preferences";
 
@@ -139,7 +139,7 @@ export function Landing() {
               </select>
               <ChevronDown size={14} aria-hidden="true" />
             </div>
-            <FactoryScene />
+            <IndustryScene industry={industry.id} />
             <div className="scenario-report" aria-live="polite">
               <span className="report-icon">
                 <CheckCheck size={19} />
