@@ -1,3 +1,5 @@
+> Implemented follow-up: [Integrated report conversations](voice-contradiction-dialogue.md) replaces the separate primary reporting controls with automatic checking and spoken clarification.
+
 # Gnani worker voice implementation plan
 
 Branch: `feat/gnani-worker-voice`. Research checked 6 November 2026.

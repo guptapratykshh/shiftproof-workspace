@@ -238,12 +238,18 @@ def scheduled(db):
         if expired(db, extraction):
             extraction.input_text = "[Original input removed under retention policy]"
     for job in db.scalars(
-        select(BackgroundJob).where(BackgroundJob.kind.in_(["transcribe", "extract", "speak"]))
+        select(BackgroundJob).where(BackgroundJob.kind.in_(["transcribe", "extract", "speak", "conversation_transcribe", "conversation_analyze"]))
     ):
         if expired(db, job):
             job.payload, job.result = {}, {"retention_expired": True}
             if job.status in {"queued", "processing"}:
                 job.status, job.error = "failed", "The original processing source is no longer retained."
+    from .models import ReportConversation, ConversationTurn
+    for conversation in db.scalars(select(ReportConversation)):
+        if expired(db, conversation) and conversation.status != "expired":
+            conversation.state, conversation.status = {}, "expired"
+            for turn in db.scalars(select(ConversationTurn).where(ConversationTurn.conversation_id == conversation.id)):
+                turn.text, turn.details = "[Conversation source removed under retention policy]", {}
     return {"checked_at": now().isoformat()}
 
 
@@ -262,9 +268,9 @@ def execute(job_id: str, lease: str):
             if not job:
                 return
             user = db.get(User, job.actor_id) if job.actor_id else None
-            if job.kind in {"extract", "transcribe", "speak"} and (not user or not user.active):
+            if job.kind in {"extract", "transcribe", "speak", "conversation_transcribe", "conversation_analyze"} and (not user or not user.active):
                 raise ValueError("This account is no longer active. Processing stopped.")
-            if job.kind in {"extract", "transcribe", "speak"}:
+            if job.kind in {"extract", "transcribe", "speak", "conversation_transcribe", "conversation_analyze"}:
                 from .services.retention import expired
 
                 if expired(db, job):
@@ -275,6 +281,9 @@ def execute(job_id: str, lease: str):
                 result = email(job)
             elif job.kind == "schedule":
                 result = scheduled(db)
+            elif job.kind in {"conversation_transcribe", "conversation_analyze"}:
+                from .services.conversations import process_transcription, process_analysis
+                result = (process_transcription if job.kind == "conversation_transcribe" else process_analysis)(db, job, user)
             elif job.kind == "transcribe":
                 from .integrations.gnani.client import transcribe
                 from .services.storage import read_bytes, wav_for_transcription
@@ -341,6 +350,12 @@ def execute(job_id: str, lease: str):
 
                 require_department(db, user, job.payload["department_id"], active=True)
                 source = job.payload.get("source", "")
+                if source.startswith("conversation:"):
+                    from .services.conversations import accessible
+                    _, identity, revision = source.split(":")
+                    conversation = accessible(db, user, identity)
+                    if conversation.revision != int(revision):
+                        raise ValueError("This question has changed. Use the current conversation.")
                 if source.startswith("handover:"):
                     from .services.handovers import visible_handover
 
@@ -385,6 +400,9 @@ def execute(job_id: str, lease: str):
                 .with_for_update()
             )
             if job:
+                if job.kind in {"conversation_transcribe", "conversation_analyze"}:
+                    from .services.conversations import mark_failed
+                    mark_failed(db, job, safe[:1000])
                 job.status = "failed" if job.attempts >= job.max_attempts else "queued"
                 job.available_at = now() + timedelta(seconds=15 * 2**job.attempts)
                 job.leased_until, job.error = None, safe[:1000]

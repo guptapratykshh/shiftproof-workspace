@@ -30,7 +30,11 @@ import type {
   Task,
 } from "../../lib/types";
 import { categories } from "./Reporting";
-import { claimTextFields, claimStatusFields } from "../../components/workspace/ClaimFields";
+import {
+  claimTextFields,
+  claimStatusFields,
+} from "../../components/workspace/ClaimFields";
+import { VoiceClarification } from "../../components/workspace/VoiceClarification";
 import { TaskForm } from "./Tasks";
 
 export function ReportsPage() {
@@ -275,12 +279,18 @@ function Facts({ fields }: { fields: ReportFields }) {
     work_area: "Work area",
     batch: "Batch / order",
     quantity: "Quantity",
+    transfer_complete: "Transfer received in full?",
     unit: "Unit",
     operational_status: "Operational status",
     action_taken: "Action already taken",
     safety_implication: "Safety implication",
     quality_implication: "Quality implication",
-    ...Object.fromEntries([...claimTextFields, ...claimStatusFields].map(({key, label}) => [key, label])),
+    ...Object.fromEntries(
+      [...claimTextFields, ...claimStatusFields].map(({ key, label }) => [
+        key,
+        label,
+      ]),
+    ),
   };
   return (
     <dl className="work-definition">
@@ -289,7 +299,13 @@ function Facts({ fields }: { fields: ReportFields }) {
         .map(([key, value]) => (
           <div key={key}>
             <dt>{w(labels[key])}</dt>
-            <dd>{key === "category" ? w(String(value)) : String(value)}</dd>
+            <dd>
+              {key === "transfer_complete"
+                ? w(value ? "Complete delivery" : "Partial")
+                : ["category", "quantity_stage"].includes(key)
+                  ? w(String(value))
+                  : String(value)}
+            </dd>
           </div>
         ))}
     </dl>
@@ -299,9 +315,11 @@ function Facts({ fields }: { fields: ReportFields }) {
 function ClarificationCard({
   item,
   own,
+  report,
 }: {
   item: Clarification;
   own: boolean;
+  report?: Report;
 }) {
   const { t } = usePreferences();
   const [responding, setResponding] = useState(false);
@@ -316,6 +334,8 @@ function ClarificationCard({
           <p>{item.response}</p>
           <small>{formatDate(item.responded_at)}</small>
         </>
+      ) : own && report ? (
+        <VoiceClarification item={item} report={report} />
       ) : own ? (
         <>
           <button
@@ -626,12 +646,40 @@ export function ReportDetailPage() {
                 </Empty>
               )}
             </Panel>
+            {!!item.conversations?.length && (
+              <Panel title={t("Report conversation", "रिपोर्ट पर बातचीत")}>
+                {item.conversations.map((conversation) => (
+                  <details key={conversation.id}>
+                    <summary>
+                      {t(
+                        "Questions and worker answers",
+                        "सवाल और कर्मचारी के उत्तर",
+                      )}
+                    </summary>
+                    {conversation.turns.map((turn) => (
+                      <div
+                        className={`conversation-turn ${turn.role}`}
+                        key={turn.id}
+                      >
+                        <strong>
+                          {turn.role === "worker"
+                            ? t("Worker", "कर्मचारी")
+                            : "ShiftProof"}
+                        </strong>
+                        <p>{turn.text}</p>
+                      </div>
+                    ))}
+                  </details>
+                ))}
+              </Panel>
+            )}
             <Panel title={t("Clarification", "स्पष्टीकरण")}>
               {item.clarifications?.length ? (
                 item.clarifications.map((question) => (
                   <ClarificationCard
                     key={question.id}
                     item={question}
+                    report={item}
                     own={question.recipient_id === session.user.id}
                   />
                 ))
@@ -823,13 +871,28 @@ export function ReportDetailPage() {
                         defaultValue: latest.fields[key] || "",
                       })),
                       ...claimTextFields.map(({ key, label }) => ({
-                        name: key, label, defaultValue: latest.fields[key] || "",
+                        name: key,
+                        label,
+                        defaultValue: latest.fields[key] || "",
                       })),
                       ...claimStatusFields.map(({ key, label, values }) => ({
-                        name: key, label, type: "select" as const,
+                        name: key,
+                        label,
+                        type: "select" as const,
                         defaultValue: latest.fields[key] || "",
-                        options: [{ value: "", label: t("Not stated / unsure", "नहीं बताया / अनिश्चित") },
-                          ...values.map(value => ({ value, label: w(value) }))],
+                        options: [
+                          {
+                            value: "",
+                            label: t(
+                              "Not stated / unsure",
+                              "नहीं बताया / अनिश्चित",
+                            ),
+                          },
+                          ...values.map((value) => ({
+                            value,
+                            label: w(value),
+                          })),
+                        ],
                       })),
                       {
                         name: "reason",
@@ -861,8 +924,8 @@ export function ReportDetailPage() {
                               values.operational_status || null,
                             ...Object.fromEntries(
                               [
-                                ...claimTextFields.map(field => field.key),
-                                ...claimStatusFields.map(field => field.key),
+                                ...claimTextFields.map((field) => field.key),
+                                ...claimStatusFields.map((field) => field.key),
                                 "machine",
                                 "work_area",
                                 "batch",
@@ -1013,13 +1076,15 @@ export function ConflictsPage() {
               <Status value={detail.status} />
               <h2>{detail.title}</h2>
               <div className="work-tags">
-                {detail.findings?.map(finding => <Status key={finding.category} value={finding.severity} />)}
+                {detail.findings?.map((finding) => (
+                  <Status key={finding.category} value={finding.severity} />
+                ))}
               </div>
               <p className="work-copy">{detail.discrepancy}</p>
               {detail.resolution && (
                 <p className="instruction-box">{detail.resolution}</p>
               )}
-              {detail.status !== "resolved" && (
+              {detail.status !== "resolved" && detail.can_resolve !== false && (
                 <button
                   className="button button-primary"
                   onClick={() => setResolve(true)}
@@ -1032,6 +1097,18 @@ export function ConflictsPage() {
               )}
             </Panel>
             <div className="work-two-column">
+              {detail.shared_sources?.map((source) => (
+                <Panel key={source.department} title={source.department}>
+                  <p className="work-note">
+                    {t("Shared comparison facts", "तुलना के लिए साझा तथ्य")} ·{" "}
+                    {t("Version", "संस्करण")} {source.version}
+                  </p>
+                  <Facts fields={source.fields} />
+                  {source.responses.map((response, i) => (
+                    <Status key={i} value={response} />
+                  ))}
+                </Panel>
+              ))}
               {detail.reports?.map((report) => {
                 const source = report.versions?.find(
                   (v) => v.number === report.linked_version,

@@ -18,6 +18,7 @@ from ..models import (
     FileAsset,
     Organization,
     Report,
+    ReportConversation,
     ReportEvidence,
     ReportReview,
     ReportTaskLink,
@@ -31,7 +32,7 @@ from ..models import (
 from ..schemas import ReportInput
 from ..security import department_ids, fail, policy_value, require_department, scoped
 from .common import audit, notify, record_dict
-from .contradictions import compare, summary
+from .contradictions import summary
 from .retention import retained_record
 
 
@@ -192,36 +193,16 @@ def append_version(db: Session, user: User, report: Report, values: ReportInput,
 
 
 def detect_conflicts(db: Session, report: Report, version: ReportVersion):
+    from .comparisons import candidates
+    from .conversations import recorded_answer
     fields = version.fields
-    if not any(fields.get(key) for key in ("batch", "machine", "order", "task_reference")):
-        return
-    candidates = list(db.scalars(
-        select(Report)
-        .where(
-            Report.organization_id == report.organization_id,
-            Report.department_id == report.department_id,
-            Report.id != report.id,
-            Report.occurred_at >= report.occurred_at - timedelta(hours=24),
-            Report.occurred_at <= report.occurred_at + timedelta(hours=24),
-        )
-        .order_by(Report.created_at.desc())
-    ))
-    if not candidates:
-        return
-    # Batch-load versions; do not silently ignore a matching report when more
-    # than 100 unrelated updates have arrived in a busy department.
-    latest = {item.id: item.latest_version for item in candidates}
-    timezone = db.get(Organization, report.organization_id).timezone
-    versions = {item.report_id: item for item in db.scalars(
-        select(ReportVersion).where(ReportVersion.report_id.in_(list(latest)))
-    ) if item.number == latest[item.report_id]}
-    for previous in candidates:
-        other = versions.get(previous.id)
-        if not other:
-            continue
-        findings = compare(fields, other.fields, report, previous, timezone)
-        if not findings:
-            continue
+    conversation = db.scalar(select(ReportConversation).where(
+        ReportConversation.report_id == report.id, ReportConversation.status == "submitted"))
+    # Scope answers belong to this exact submitted version, never a later edit.
+    checked = bool(conversation and conversation.state.get("draft", {}).get("fields") == fields)
+    for match in candidates(db, report, fields, include_context=checked,
+                            context_decisions=conversation.state.get("context_decisions", {}) if checked else None):
+        previous, other, findings = match["report"], match["version"], match["findings"]
         already = db.scalar(
             select(ConflictReport.conflict_id).where(
                 ConflictReport.report_id == report.id,
@@ -238,7 +219,7 @@ def detect_conflicts(db: Session, report: Report, version: ReportVersion):
             continue
         conflict = Conflict(
             organization_id=report.organization_id,
-            department_id=report.department_id,
+            department_id=match["owner_department_id"],
             title=" / ".join(finding["title"] for finding in findings)[:200],
             discrepancy=summary(findings),
         )
@@ -254,13 +235,23 @@ def detect_conflicts(db: Session, report: Report, version: ReportVersion):
                     version_number=number,
                 )
             )
-            question = "Please clarify the time and conditions you observed. You can confirm, correct, add context, or say you are unsure."
+            own_fields = fields if source.id == report.id else other.fields
+            peer_fields = other.fields if source.id == report.id else fields
+            own_value = own_fields.get(findings[0]["field"])
+            peer_value = peer_fields.get(findings[0]["field"])
+            reference = own_fields.get("transfer_reference") or own_fields.get("batch") or own_fields.get("machine") or own_fields.get("order") or own_fields.get("task_reference") or "this work"
+            question = f"For {reference}, your report says {own_value} {own_fields.get('unit') or ''}; a related report says {peer_value} {peer_fields.get('unit') or ''}. Please confirm your own observation, correct it, explain the time or transfer context, or say you are unsure."
+            answered = recorded_answer(db, source.id, previous.id if source.id == report.id else report.id,
+                                       other.number if source.id == report.id else version.number)
             clarification = Clarification(
                 organization_id=report.organization_id,
                 report_id=source.id,
                 conflict_id=conflict.id,
                 recipient_id=source.author_id,
                 question=question,
+                response=answered["text"] if answered else None,
+                response_type=answered["response_type"] if answered else None,
+                responded_at=now() if answered else None,
             )
             db.add(clarification)
             db.flush()
@@ -269,28 +260,42 @@ def detect_conflicts(db: Session, report: Report, version: ReportVersion):
                 report.organization_id,
                 source.author_id,
                 f"clarification:{clarification.id}",
-                "A report needs clarification",
-                question,
+                "Verification pending" if answered else "A report needs clarification",
+                "Your answer is saved. A supervisor will verify the related reports." if answered else question,
                 f"/workspace/reports/{source.id}",
             )
-        attention(db, report, f"conflict:{conflict.id}", conflict.discrepancy)
+        for department_id in {report.department_id, previous.department_id}:
+            for recipient in reviewers(db, department_id):
+                notify(db, report.organization_id, recipient, f"conflict:{conflict.id}",
+                       "Related reports need verification", conflict.discrepancy,
+                       f"/workspace/conflicts/{conflict.id}")
 
 
 def lock_comparison_context(db: Session, user: User, department_id: str):
     # Two different workers can submit at once. A shared departmental write
     # forces one transaction to retry against the other's committed report,
     # avoiding two snapshots that each see no counterpart.
-    db.execute(update(Department).where(
-        Department.id == department_id, Department.organization_id == user.organization_id,
-    ).values(updated_at=now()))
+    from .comparisons import linked_departments
+    ids = {department_id}
+    for link in linked_departments(db, user.organization_id, department_id):
+        ids.update([link.source_department_id, link.receiving_department_id])
+    for identity in sorted(ids):
+        db.execute(update(Department).where(Department.id == identity,
+            Department.organization_id == user.organization_id).values(updated_at=now()))
+
 
 
 def submit(db: Session, user: User, values: ReportInput):
     # Serialize one reporter's retries before checking the unique submission key.
     db.execute(update(User).where(User.id == user.id).values(updated_at=now()))
-    fingerprint = hashlib.sha256(
-        json.dumps(values.model_dump(mode="json"), sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
+    request_value = values.model_dump(mode="json")
+    for key in ("conversation_id", "conversation_revision"):
+        if request_value[key] is None:
+            request_value.pop(key)
+    for key in ("quantity_stage", "transfer_reference", "transfer_complete"):
+        if request_value["fields"].get(key) is None:
+            request_value["fields"].pop(key, None)
+    fingerprint = hashlib.sha256(json.dumps(request_value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     existing = db.scalar(
         select(Report).where(
             Report.organization_id == user.organization_id,
@@ -307,6 +312,8 @@ def submit(db: Session, user: User, values: ReportInput):
         return existing
     validate_sources(db, user, values)
     lock_comparison_context(db, user, values.department_id)
+    from .conversations import verify_submission
+    conversation = verify_submission(db, user, values)
     fields = values.fields
     required_evidence = policy_value(db, user.organization_id, "operations").get(
         "evidence_required_categories", []
@@ -315,6 +322,7 @@ def submit(db: Session, user: User, values: ReportInput):
         values.immediate_safety
         or fields.category in {"safety", "quality"}
         or fields.uncertainty
+        or (conversation and conversation.state.get("unresolved"))
         or fields.safety_implication
         or fields.quality_implication
         or (fields.category in required_evidence and not values.evidence_ids)
@@ -337,6 +345,9 @@ def submit(db: Session, user: User, values: ReportInput):
     db.add(report)
     db.flush()
     version = append_version(db, user, report, values)
+    if conversation:
+        conversation.report_id, conversation.status = report.id, "submitted"
+        db.flush()
     if values.immediate_safety:
         from .alerts import create_alert
 
@@ -407,9 +418,18 @@ def report_detail(db: Session, user: User, report: Report):
         )
         versions.append(item)
     clarifications = select(Clarification).where(Clarification.report_id == report.id)
+    from ..models import ReportConversation, ConversationTurn
+    from .retention import expired
+    conversations = []
+    for conversation in db.scalars(select(ReportConversation).where(ReportConversation.report_id == report.id)):
+        if not expired(db, conversation):
+            conversations.append({"id": conversation.id, "status": conversation.status,
+                "turns": [record_dict(turn, {"details"}) for turn in db.scalars(select(ConversationTurn).where(
+                    ConversationTurn.conversation_id == conversation.id).order_by(ConversationTurn.created_at))]})
     return {
         **record_dict(report),
         "versions": versions,
+        "conversations": conversations,
         "reviews": [
             record_dict(item)
             for item in db.scalars(

@@ -37,6 +37,10 @@ if mongo_url:
 subprocess.run([sys.executable, "-m", "app.bootstrap"], check=True)
 import uvicorn
 
+if os.environ.get("SHIFTPROOF_DIALOGUE_FIXTURES") == "1":
+    from dialogue_browser_fixtures import install
+    install()
+
 try:
     uvicorn.run("app.main:app", host="127.0.0.1", port=port, access_log=False)
 finally:

@@ -3,12 +3,12 @@ import time
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, or_
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
 from ..db import get_db, now
-from ..models import Clarification, Conflict, ConflictReport, Organization, Report, ReportReview, ReportTaskLink, Task, User
+from ..models import Clarification, Conflict, ConflictReport, Department, Organization, Report, ReportReview, ReportTaskLink, ReportVersion, Task, User
 from ..schemas import Input, ReportInput
 from ..security import current_user, department_ids, fail, require_department, scoped
 from ..services import reports as service
@@ -298,6 +298,8 @@ def link_task(
 class ClarificationResponse(Input):
     response_type: Literal["confirm", "correct", "context", "uncertain"]
     response: str = Field(min_length=1, max_length=10000)
+    conversation_id: str | None = None
+    conversation_revision: int | None = None
 
 
 @router.get("/clarifications")
@@ -326,9 +328,24 @@ def respond(
         fail(403, "Only the requested person can answer.")
     if item.responded_at:
         fail(409, "This answer is already recorded. Submit a report correction for further changes.")
+    if values.conversation_id:
+        from ..services.conversations import accessible
+        conversation = accessible(db, user, values.conversation_id)
+        if conversation.clarification_id != item.id or conversation.revision != values.conversation_revision or conversation.status != "ready":
+            fail(409, "Review the latest clarification conversation before sending.")
+        if not conversation.state.get("answer"):
+            fail(422, "Answer the clarification before sending.")
+        values.response, values.response_type = conversation.state["answer"], conversation.state["answer_type"]
+        conversation.status = "submitted"
     item.response_type, item.response, item.responded_at = values.response_type, values.response, now()
     report = db.get(Report, item.report_id)
     service.attention(db, report, f"clarified:{item.id}", "A clarification response is ready for review.")
+    if item.conflict_id:
+        conflict = db.get(Conflict, item.conflict_id)
+        for reviewer in service.reviewers(db, conflict.department_id):
+            notify(db, user.organization_id, reviewer, f"clarification:{item.id}:answered",
+                   "A clarification response is ready", "Review the related observations before resolving the difference.",
+                   f"/workspace/conflicts/{conflict.id}")
     audit(
         db,
         user,
@@ -343,9 +360,10 @@ def respond(
 
 @router.get("/conflicts")
 def conflicts(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
-    query = select(Conflict).where(
-        Conflict.organization_id == user.organization_id, Conflict.department_id.in_(department_ids(db, user))
-    )
+    allowed = department_ids(db, user)
+    related = select(ConflictReport.conflict_id).join(Report, Report.id == ConflictReport.report_id).where(Report.department_id.in_(allowed))
+    query = select(Conflict).where(Conflict.organization_id == user.organization_id,
+                                 or_(Conflict.department_id.in_(allowed), Conflict.id.in_(related)))
     if user.role == "worker":
         query = query.where(
             Conflict.id.in_(
@@ -376,20 +394,60 @@ def conflict_detail(
     db: Session = Depends(get_db, scope="function"),
 ):
     item = scoped(db, Conflict, record_id, user)
-    require_department(db, user, item.department_id, "review")
-    sources = []
-    for link in db.scalars(select(ConflictReport).where(ConflictReport.conflict_id == item.id)):
-        report = service.accessible_report(db, user, link.report_id, purpose)
-        sources.append({"linked_version": link.version_number, **service.report_detail(db, user, report)})
+    links = list(db.scalars(select(ConflictReport).where(ConflictReport.conflict_id == item.id)))
+    rows = [(link, db.get(Report, link.report_id)) for link in links]
+    review = set(department_ids(db, user, "review"))
+    if not any(report.department_id in review for _, report in rows):
+        fail(403, "Supervisor review permission is required for this comparison.")
+    from ..services.comparisons import linked_departments
+    departments = {r.department_id for _, r in rows}
+    if len(departments) > 1 and not any(
+        {link.source_department_id, link.receiving_department_id} == departments
+        for link in linked_departments(db, user.organization_id, item.department_id)):
+        fail(403, "The department comparison link is no longer active.")
+    sources, shared, versions = [], [], []
+    keys = {"category", "quantity", "unit", "quantity_stage", "transfer_complete", "transfer_reference",
+            "batch", "order", "machine", "task_reference", "reference_period", "observation_time",
+            "quality_status", "dispatch_status", "machine_status", "task_status"}
+    for link, report in rows:
+        version = db.scalar(select(ReportVersion).where(ReportVersion.report_id == report.id, ReportVersion.number == link.version_number))
+        versions.append((report, version))
+        if report.department_id in review:
+            service.check_sensitive_access(db, user, report.department_id, purpose)
+            sources.append({"linked_version": link.version_number, **service.report_detail(db, user, report)})
+        else:
+            shared.append({"department": db.get(Department, report.department_id).name,
+                "version": link.version_number, "fields": {k: v for k, v in version.fields.items() if k in keys},
+                "responses": [c.response_type for c in db.scalars(select(Clarification).where(
+                    Clarification.conflict_id == item.id, Clarification.report_id == report.id)) if c.responded_at]})
     findings = []
-    if len(sources) == 2:
-        a, b = sources
-        va = next((v for v in a["versions"] if v["number"] == a["linked_version"]), None)
-        vb = next((v for v in b["versions"] if v["number"] == b["linked_version"]), None)
+    if len(versions) == 2:
+        (a, va), (b, vb) = versions
         if va and vb:
-            findings = compare(va["fields"], vb["fields"], db.get(Report, a["id"]), db.get(Report, b["id"]),
-                               db.get(Organization, user.organization_id).timezone)
-    return {**record_dict(item), "reports": sources, "findings": findings}
+            findings = compare(va.fields, vb.fields, a, b, db.get(Organization, user.organization_id).timezone,
+                               cross_department=a.department_id != b.department_id)
+            if a.department_id == b.department_id and not any(f["field"] == "quantity" for f in findings):
+                from ..models import ReportConversation
+                from ..services.retention import expired
+                frozen = {a.id: va, b.id: vb}
+                for conversation in db.scalars(select(ReportConversation).where(
+                    ReportConversation.organization_id == user.organization_id,
+                    ReportConversation.report_id.in_(list(frozen)),
+                    ReportConversation.status == "submitted",
+                )):
+                    own = frozen[conversation.report_id]
+                    draft = conversation.state.get("draft", {})
+                    if expired(db, conversation) or draft.get("fields") != own.fields or draft.get("text") != own.text:
+                        continue
+                    for evidence in conversation.state.get("findings", []):
+                        peer = frozen.get(evidence["report_id"])
+                        finding = evidence["finding"]
+                        if (peer and peer.number == evidence["version_number"]
+                                and finding["category"] == "quantity_context"
+                                and not any(f["category"] == "quantity_context" for f in findings)):
+                            findings.append(finding)
+    return {**record_dict(item), "reports": sources, "shared_sources": shared,
+            "can_resolve": item.department_id in review, "findings": findings}
 
 
 class Resolution(Input):
@@ -405,7 +463,14 @@ def resolve_conflict(
     db: Session = Depends(get_db, scope="function"),
 ):
     item = scoped(db, Conflict, record_id, user)
-    require_department(db, user, item.department_id, "review")
+    require_department(db, user, item.department_id, "review", active=True)
+    from ..services.comparisons import linked_departments
+    departments = {db.get(Report, link.report_id).department_id for link in db.scalars(
+        select(ConflictReport).where(ConflictReport.conflict_id == item.id))}
+    if len(departments) > 1 and not any(
+        {link.source_department_id, link.receiving_department_id} == departments
+        for link in linked_departments(db, user.organization_id, item.department_id)):
+        fail(403, "The department comparison link is no longer active.")
     if item.version != values.version or item.status == "resolved":
         fail(409, "Review the latest unresolved conflict first.")
     item.status, item.resolved_by, item.resolved_at, item.resolution = (

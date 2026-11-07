@@ -11,11 +11,12 @@ import {
   WandSparkles,
 } from "lucide-react";
 import { useCatalog } from "../../components/workspace/Workspace";
-import { ClaimFields } from "../../components/workspace/ClaimFields";
 import {
-  VoicePlayback,
-  useOnline,
-} from "../../components/workspace/VoicePlayback";
+  ConversationPanel,
+  useReportConversation,
+} from "../../components/workspace/ReportConversation";
+import { ClaimFields } from "../../components/workspace/ClaimFields";
+import { useOnline } from "../../components/workspace/VoicePlayback";
 import {
   ActionButton,
   Empty,
@@ -40,13 +41,7 @@ import {
 } from "../../lib/offline";
 import { useSession } from "../../lib/session";
 import { usePreferences } from "../../lib/preferences";
-import type {
-  Job,
-  Paged,
-  ReportFields,
-  ReportPayload,
-  Task,
-} from "../../lib/types";
+import type { Paged, ReportFields, ReportPayload, Task } from "../../lib/types";
 
 export const categories = [
   "general",
@@ -98,13 +93,22 @@ export function ReportComposer() {
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [jobId, setJobId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationRevision, setConversationRevision] = useState<
+    number | null
+  >(null);
+  const [sourceEvidenceIds, setSourceEvidenceIds] = useState<string[]>([]);
+  const [replyRecording, setReplyRecording] = useState(false);
+  const [manualFields, setManualFields] = useState(false);
+  const [pendingAnswer, setPendingAnswer] = useState("");
+  const [pendingVoiceAnswer, setPendingVoiceAnswer] = useState<
+    LocalAttachment | undefined
+  >();
   const [audioPreview, setAudioPreview] = useState("");
   const [loaded, setLoaded] = useState(!params.get("draft"));
   const online = useOnline();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const revision = useRef(0);
-  const pendingRevision = useRef(0);
   const cancelledRecording = useRef(false);
   const mounted = useRef(true);
   const capabilities = useQuery({
@@ -118,7 +122,6 @@ export function ReportComposer() {
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const chunks = useRef<Blob[]>([]);
-  const handledJobs = useRef(new Set<string>());
   const [associations, setAssociations] = useState<
     { id: string; title: string; basis: string }[]
   >([]);
@@ -153,15 +156,6 @@ export function ReportComposer() {
       api<Paged<Task>>(`/tasks?department_id=${departmentId}&limit=200`),
     enabled: !!departmentId,
   });
-  const job = useQuery({
-    queryKey: ["job", jobId],
-    queryFn: () => api<Job>(`/jobs/${jobId}`),
-    enabled: !!jobId,
-    refetchInterval: (query) =>
-      ["succeeded", "failed"].includes(query.state.data?.status || "")
-        ? false
-        : 1500,
-  });
   const payload = (): ReportPayload => ({
     client_request_id: draftId,
     department_id: departmentId,
@@ -173,10 +167,41 @@ export function ReportComposer() {
     task_id: taskId || null,
     transcript_id: transcriptId,
     extraction_id: extractionId,
-    evidence_ids: attachments.map((a) => a.uploadedId!).filter(Boolean),
+    evidence_ids: [
+      ...new Set([
+        ...sourceEvidenceIds,
+        ...attachments.map((a) => a.uploadedId!).filter(Boolean),
+      ]),
+    ],
     immediate_safety: critical,
     immediate_alert_id: immediateAlertId,
     confirmed: true,
+    conversation_id: conversationId,
+    conversation_revision: conversationRevision,
+  });
+  const dialogue = useReportConversation({
+    draft: payload(),
+    language: speechLanguage,
+    inputRevision: revision.current,
+    initialId: conversationId,
+    onId: setConversationId,
+    onDraft: (value, conversation) => {
+      setText(value.text);
+      setFields(value.fields);
+      setOriginal((current) => current || value.text);
+      setTranscriptId(value.transcript_id);
+      setExtractionId(value.extraction_id);
+      setSourceEvidenceIds(value.evidence_ids);
+      setConversationRevision(conversation.revision);
+      setConfirmed(false);
+      setManualFields(false);
+      setHint(
+        t(
+          "Check the conversation and your report before sending.",
+          "भेजने से पहले बातचीत और रिपोर्ट जाँचें।",
+        ),
+      );
+    },
   });
   const draft = (nextStatus: LocalDraft["status"]): LocalDraft => ({
     id: draftId,
@@ -184,6 +209,8 @@ export function ReportComposer() {
     updatedAt: new Date().toISOString(),
     payload: payload(),
     attachments,
+    pendingAnswer,
+    pendingVoiceAnswer,
   });
   useEffect(() => {
     if (!params.get("draft")) return;
@@ -220,6 +247,11 @@ export function ReportComposer() {
         );
         setTranscriptId(item.payload.transcript_id);
         setExtractionId(item.payload.extraction_id);
+        setConversationId(item.payload.conversation_id || null);
+        setConversationRevision(item.payload.conversation_revision ?? null);
+        setSourceEvidenceIds(item.payload.evidence_ids);
+        setPendingAnswer(item.pendingAnswer || "");
+        setPendingVoiceAnswer(item.pendingVoiceAnswer);
         setCritical(item.payload.immediate_safety);
         setImmediateAlertId(item.payload.immediate_alert_id || null);
         setAttachments(item.attachments);
@@ -265,6 +297,11 @@ export function ReportComposer() {
     transcriptId,
     extractionId,
     immediateAlertId,
+    conversationId,
+    conversationRevision,
+    sourceEvidenceIds,
+    pendingAnswer,
+    pendingVoiceAnswer,
   ]);
   useEffect(() => {
     if (!recording) return;
@@ -297,60 +334,6 @@ export function ReportComposer() {
     setAudioPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [attachments]);
-  useEffect(() => {
-    const value = job.data;
-    if (
-      !value ||
-      value.status !== "succeeded" ||
-      handledJobs.current.has(value.id)
-    )
-      return;
-    handledJobs.current.add(value.id);
-    if (pendingRevision.current !== revision.current) {
-      setHint(
-        t(
-          "Your edits were kept. Process the updated words again if needed.",
-          "आपके बदलाव सुरक्षित हैं। ज़रूरत हो तो बदले हुए शब्द फिर से प्रोसेस करें।",
-        ),
-      );
-      return;
-    }
-    if (value.result.no_speech) {
-      setHint(
-        t(
-          "No clear speech was found. Try speaking closer to the microphone, or type your update.",
-          "साफ़ आवाज़ नहीं मिली। माइक्रोफ़ोन के पास बोलें या अपडेट लिखें।",
-        ),
-      );
-      return;
-    }
-    if (value.result.text) {
-      setOriginal(value.result.text);
-      setText(value.result.text);
-      setTranscriptId(value.result.transcript_id || null);
-      setExtractionId(null);
-      setFields({ category: "general", description: "" });
-      setHint(
-        t(
-          "Your words are ready. Check them, listen if helpful, then confirm and send.",
-          "आपके शब्द तैयार हैं। जाँचें, चाहें तो सुनें, फिर पुष्टि करके भेजें।",
-        ),
-      );
-    }
-    if (value.result.fields) {
-      setDetailsOpen(true);
-      setFields(value.result.fields);
-      setExtractionId(value.result.extraction_id || null);
-      setTranscriptId(value.result.transcript_id || transcriptId);
-      setHint(
-        t(
-          "These are AI suggestions. Check and correct every relevant field before confirming.",
-          "ये AI सुझाव हैं। पुष्टि से पहले हर आवश्यक फ़ील्ड जाँचें और सुधारें।",
-        ),
-      );
-    }
-    setConfirmed(false);
-  }, [job.data]);
   const startRecording = async () => {
     setError(null);
     if (!consent || !departmentId) {
@@ -481,8 +464,6 @@ export function ReportComposer() {
     audio = attachments.find((a) => a.kind === "audio"),
   ) => {
     if (!audio) return;
-    const requestedRevision = revision.current;
-    setJobId(null);
     setBusy(true);
     setError(null);
     try {
@@ -492,42 +473,34 @@ export function ReportComposer() {
       setAttachments((current) =>
         current.map((a) => (a === audio ? { ...a, uploadedId } : a)),
       );
-      const result = await post<Job>("/transcriptions", {
-        asset_id: uploadedId,
-        language: speechLanguage,
-        task_id: taskId || null,
-      });
-      if (!mounted.current) return;
-      pendingRevision.current = requestedRevision;
-      handledJobs.current.delete(result.id);
-      setJobId(result.id);
+      await dialogue.send("update", "", uploadedId);
     } catch (cause) {
       setError(cause);
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   };
   const extract = async () => {
-    const requestedRevision = revision.current;
-    setJobId(null);
     setBusy(true);
     setError(null);
+    setConfirmed(false);
     try {
-      const result = await post<Job>("/extractions", {
-        text,
-        transcript_id: transcriptId,
-      });
-      if (!mounted.current) return;
-      pendingRevision.current = requestedRevision;
-      handledJobs.current.delete(result.id);
-      setJobId(result.id);
+      await dialogue.send(manualFields ? "edit" : "update", text);
     } catch (cause) {
       setError(cause);
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   };
   const submit = async () => {
+    if (
+      online &&
+      dialogue.conversation &&
+      (dialogue.dirty || dialogue.conversation.status !== "ready")
+    ) {
+      await extract();
+      return;
+    }
     if (!text.trim() || !departmentId || !confirmed) {
       setError(
         t(
@@ -560,6 +533,11 @@ export function ReportComposer() {
           ),
         );
         if (saved?.error) setError(saved.error);
+        if (saved?.requiresReview) {
+          setStatus("Saved locally");
+          setConfirmed(false);
+          await dialogue.send("edit", text);
+        }
       }
     } catch (cause) {
       setError(cause);
@@ -569,6 +547,7 @@ export function ReportComposer() {
     }
   };
   const setField = (key: keyof ReportFields, value: string) => {
+    setManualFields(true);
     revision.current += 1;
     setFields((current) => ({
       ...current,
@@ -577,7 +556,11 @@ export function ReportComposer() {
           ? value === ""
             ? null
             : Number(value)
-          : value || null,
+          : key === "transfer_complete"
+            ? value === ""
+              ? null
+              : value === "true"
+            : value || null,
     }));
     setConfirmed(false);
   };
@@ -600,22 +583,11 @@ export function ReportComposer() {
         </Panel>
       </>
     );
-  const processing =
-    !!jobId &&
-    !job.isError &&
-    !["succeeded", "failed"].includes(job.data?.status || "");
-  const readback = {
-    department_id: departmentId,
-    text,
-    fields,
-    immediate_safety: critical,
-    language:
-      speechLanguage === "en-IN"
-        ? "en-IN"
-        : speechLanguage === "hi-IN"
-          ? "hi-IN"
-          : "auto",
-  };
+  const processing = dialogue.processing || replyRecording;
+  const needsAnswer =
+    !!dialogue.conversation &&
+    !dialogue.dirty &&
+    dialogue.conversation.status === "awaiting_answer";
   return (
     <>
       <PageTitle
@@ -639,7 +611,7 @@ export function ReportComposer() {
       >
         {[
           t("Speak or type", "बोलें या लिखें"),
-          t("Check and listen", "जाँचें और सुनें"),
+          t("Answer and check", "उत्तर दें और जाँचें"),
           t("Confirm and send", "पुष्टि करके भेजें"),
         ].map((step, index) => (
           <li key={step}>
@@ -648,6 +620,12 @@ export function ReportComposer() {
           </li>
         ))}
       </ol>
+      <p className="work-note">
+        {t(
+          "Only submitted reports are compared. Your draft is shared with your team after you tap Confirm and send.",
+          "तुलना केवल भेजी गई रिपोर्टों से होती है। पुष्टि करके भेजें दबाने के बाद आपका ड्राफ्ट टीम को दिखाई देगा।",
+        )}
+      </p>
       <div className="report-compose-layout">
         <div className="work-stack">
           <Panel title={t("01 / Capture your update", "01 / अपडेट दर्ज करें")}>
@@ -767,19 +745,22 @@ export function ReportComposer() {
             {audioPreview && (
               <div className="work-stack">
                 <audio controls src={audioPreview} />
-                <button
-                  className="button button-outline"
-                  onClick={() => void transcribe()}
-                  disabled={
-                    busy ||
-                    processing ||
-                    recording ||
-                    !online ||
-                    capabilities.data?.transcription === false
-                  }
-                >
-                  {t("Turn recording into text", "रिकॉर्डिंग से शब्द लिखें")}
-                </button>
+                {(!dialogue.conversation ||
+                  dialogue.conversation.status === "unavailable") && (
+                  <button
+                    className="button button-outline"
+                    onClick={() => void transcribe()}
+                    disabled={
+                      busy ||
+                      processing ||
+                      recording ||
+                      !online ||
+                      capabilities.data?.transcription === false
+                    }
+                  >
+                    {t("Check recording again", "रिकॉर्डिंग फिर जाँचें")}
+                  </button>
+                )}
               </div>
             )}
             <label className="form-field field-wide report-text">
@@ -823,40 +804,35 @@ export function ReportComposer() {
                 processing ||
                 recording ||
                 !online ||
-                capabilities.data?.extraction === false
+                false
               }
             >
               <WandSparkles size={17} />
-              {t("Help fill in details", "विवरण भरने में मदद लें")}
+              {t("Check update", "अपडेट जाँचें")}
             </button>
-            {(processing || job.data?.status === "failed") && (
-              <div
-                className="processing-state"
-                role="status"
-                aria-live="polite"
-              >
-                <Status value={job.data?.status || "Processing"} />
-                <p>
-                  {job.data?.error ||
-                    t(
-                      "Preparing your update. You can keep reading; nothing is submitted yet.",
-                      "आपका अपडेट तैयार हो रहा है। अभी कुछ जमा नहीं हुआ है।",
-                    )}
-                </p>
-                {job.data?.status === "failed" && (
-                  <ActionButton
-                    action={async () => {
-                      handledJobs.current.delete(jobId!);
-                      await post(`/jobs/${jobId}/retry`);
-                      await job.refetch();
-                    }}
-                  >
-                    {w("Try again")}
-                  </ActionButton>
-                )}
-              </div>
-            )}
-            {job.isError && <ErrorNotice error={job.error} />}
+            <ConversationPanel
+              dialogue={dialogue}
+              consent={consent}
+              recordingElsewhere={recording}
+              onRecording={setReplyRecording}
+              onSaveAttachment={async (attachment) => {
+                const next = [...attachments, attachment];
+                setAttachments(next);
+                setPendingVoiceAnswer(attachment);
+                await saveDraft(session, {
+                  ...draft("Saved locally"),
+                  attachments: next,
+                  pendingVoiceAnswer: attachment,
+                });
+              }}
+              savedAnswer={pendingAnswer}
+              savedRecording={pendingVoiceAnswer}
+              onAnswerSent={() => {
+                setPendingAnswer("");
+                setPendingVoiceAnswer(undefined);
+              }}
+              onSaveAnswer={setPendingAnswer}
+            />
             {hint && (
               <p className="work-note" role="status">
                 {hint}
@@ -1117,20 +1093,6 @@ export function ReportComposer() {
                 "मूल अपडेट और पुष्टि किए विवरण जुड़े रहते हैं। केवल अपने अवलोकन की पुष्टि करें।",
               )}
             </p>
-            <VoicePlayback
-              key={recording ? "recording" : JSON.stringify(readback)}
-              endpoint="/report-readback"
-              body={readback}
-              label={t("Listen to my update", "मेरा अपडेट सुनें")}
-              disabled={
-                !text.trim() ||
-                !departmentId ||
-                recording ||
-                busy ||
-                processing ||
-                capabilities.data?.playback === false
-              }
-            />
             <label className="check-field">
               <input
                 type="checkbox"
@@ -1187,7 +1149,14 @@ export function ReportComposer() {
               <input
                 type="checkbox"
                 checked={confirmed}
-                disabled={busy || recording || processing || !text.trim()}
+                disabled={
+                  busy ||
+                  recording ||
+                  processing ||
+                  needsAnswer ||
+                  dialogue.dirty ||
+                  !text.trim()
+                }
                 onChange={(event) => setConfirmed(event.target.checked)}
               />
               {t(
@@ -1202,12 +1171,14 @@ export function ReportComposer() {
                 recording ||
                 processing ||
                 !confirmed ||
+                needsAnswer ||
+                dialogue.dirty ||
                 ["Pending sync", "Syncing", "Submitted"].includes(status)
               }
               onClick={() => void submit()}
             >
               <Send size={17} />
-              {w(busy ? "Saving…" : "Submit report")}
+              {busy ? w("Saving…") : t("Confirm and send", "पुष्टि करके भेजें")}
             </button>
             <button
               className="button button-outline"
@@ -1311,9 +1282,11 @@ export function DraftsPage() {
                 <Link
                   className="button button-outline"
                   to={
-                    draft.status === "Submitted"
-                      ? `/workspace/reports/${draft.reportId}`
-                      : `/workspace/record?draft=${draft.id}`
+                    draft.clarificationId
+                      ? `/workspace/reports/${draft.sourceReportId}`
+                      : draft.status === "Submitted"
+                        ? `/workspace/reports/${draft.reportId}`
+                        : `/workspace/record?draft=${draft.id}`
                   }
                 >
                   {w(draft.status === "Submitted" ? "Read report" : "Continue")}
