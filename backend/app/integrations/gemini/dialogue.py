@@ -17,15 +17,21 @@ from .client import grounded_identifier, source_quantities
 class Reply(Input):
     response_type: Literal["confirm", "correct", "context", "uncertain"]
     fields: ReportFields = Field(default_factory=ReportFields)
+    scope_relation: Literal["same", "different", "unsure"] | None = None
+
+
+def is_simple_confirmation(text):
+    simple = re.sub(r"[,.!।?]+", " ", text.strip().casefold())
+    simple = " ".join(simple.split())
+    return simple in {"yes", "yes confirmed", "confirm", "confirmed", "haan", "han", "हाँ", "हां", "सही है"}
 
 
 def interpret_reply(text, question, fields):
-    simple = re.sub(r"[,.!।?]+", " ", text.strip().casefold())
-    simple = " ".join(simple.split())
-    if simple in {"yes", "yes confirmed", "confirm", "confirmed", "haan", "han", "हाँ", "हां", "सही है"}:
+    simple = " ".join(re.sub(r"[,.!।?]+", " ", text.strip().casefold()).split())
+    if is_simple_confirmation(text):
         return {"response_type": "confirm", "fields": {}}
     if simple in {"i'm not sure", "i am not sure", "unsure", "not sure", "पता नहीं", "मुझे नहीं पता"}:
-        return {"response_type": "uncertain", "fields": {}}
+        return {"response_type": "uncertain", "fields": {}, "explicit_uncertainty": True}
     settings = get_settings()
     if not settings.gemini_api_key:
         raise ProviderUnavailable(
@@ -39,10 +45,10 @@ quantity is the worker's CURRENT observed total for the draft's quantity_stage, 
 missing, rejected, difference, previous or other worker's count. '85 received, 15 still there'
 keeps quantity 85; '15 remain at manufacturing' leaves quantity null and adds context.
 'No, I counted 100 instead' corrects quantity to 100. Copy IDs/periods exactly from the answer.
-Keep quantity_basis total versus additional distinct. quantity_stage is manufactured/dispatched/received.
+Keep quantity_basis total versus additional distinct. quantity_stage is manufactured/packed/ready_for_dispatch/dispatched/received.
 transfer_complete is true only for an explicit full/complete transfer, false for an explicit partial transfer.
 If the answer says a different batch/period, copy the stated new context; if unspecified ask via uncertainty.
-A bare yes confirms the question only. An unclear answer is uncertain. Do not invent causes or facts.
+A bare yes confirms the question only. An unclear answer is uncertain. A useful answer naming the product or unit is context, even if it does not supply a batch. Copy product phrases including Hindi connecting words. "kitchen के products की गिनती" names product "kitchen के products" and unit items. Packing is packed, not manufactured. For a question asking whether two counts describe the same work and period, scope_relation is same only when explicitly confirmed, different only for explicitly different work/period, otherwise unsure. Do not invent causes or facts.
 For a description of remaining goods, put it in action_taken as context, not quantity.
 """
     try:
@@ -93,4 +99,8 @@ For a description of remaining goods, put it in action_taken as context, not qua
         re.I,
     ):
         patch["transfer_complete"] = False
-    return {"response_type": value.response_type, "fields": patch}
+    from ...services.count_context import normalize_count_fields
+    inferred = normalize_count_fields({**fields, **patch}, text)
+    if not patch.get("unit") and not fields.get("unit") and inferred.get("unit"):
+        patch["unit"] = inferred["unit"]
+    return {"response_type": value.response_type, "fields": patch, "scope_relation": value.scope_relation}
