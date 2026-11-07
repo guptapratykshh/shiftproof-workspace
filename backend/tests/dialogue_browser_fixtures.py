@@ -48,6 +48,11 @@ def install():
         return output.getvalue()
 
     def extract(text):
+        if "kitchen products" in text:
+            match = re.search(r"(\d+) kitchen products", text)
+            return ReportFields(category="progress", description=text, product="kitchen products",
+                                quantity=int(match[1]), unit="items", quantity_stage="packed",
+                                quantity_basis="total", dispatch_status="pending").model_dump()
         match = re.search(r"(\d+) pieces", text)
         return ReportFields(
             category="progress",
