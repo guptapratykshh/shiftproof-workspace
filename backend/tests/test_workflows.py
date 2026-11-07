@@ -234,6 +234,8 @@ def test_report_retry_correction_conflict_and_privacy(setup):
     s = setup
     as_worker(s)
     values = report_payload(s)
+    # Quantity conflicts require comparable units, not two unspecified units.
+    values["fields"]["unit"] = "pieces"
     report = expect(s.client.post("/api/v1/reports", json=values), 201)["report"]
     assert expect(s.client.post("/api/v1/reports", json=values), 201)["report"]["id"] == report["id"]
     assert s.client.post("/api/v1/reports", json={**values, "text": "Different"}).status_code == 409
@@ -255,7 +257,7 @@ def test_report_retry_correction_conflict_and_privacy(setup):
         s.client.post(
             "/api/v1/reports",
             json=report_payload(
-                s, fields={"category": "quality", "machine": "M-1", "batch": "B-1", "quantity": 12}
+                s, fields={"category": "quality", "machine": "M-1", "batch": "B-1", "quantity": 12, "unit": "pieces"}
             ),
         ),
         201,
