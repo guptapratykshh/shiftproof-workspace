@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Plus } from "lucide-react";
+import { DepartmentLinks } from "../../components/workspace/DepartmentLinks";
 import { useCatalog } from "../../components/workspace/Workspace";
 import {
   ActionButton,
@@ -263,6 +264,7 @@ export function DepartmentsPage({
           </Panel>
         )}
       </div>
+      {showDepartments && !embedded && <DepartmentLinks />}
       {editor && (
         <Modal
           title={editor.kind === "team" ? "Team" : "Department"}
