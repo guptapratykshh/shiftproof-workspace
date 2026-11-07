@@ -1,5 +1,5 @@
 import { openDB, type DBSchema } from "idb";
-import { api } from "./api";
+import { api, ApiError } from "./api";
 import type { Asset, Report, ReportPayload, Session } from "./types";
 
 export type DraftStatus =
@@ -25,6 +25,11 @@ export type LocalDraft = {
   attachments: LocalAttachment[];
   error?: string;
   reportId?: string;
+  pendingAnswer?: string;
+  pendingVoiceAnswer?: LocalAttachment;
+  clarificationId?: string;
+  sourceReportId?: string;
+  requiresReview?: boolean;
 };
 type Envelope = {
   id: string;
@@ -147,6 +152,7 @@ async function runSync(session: Session, isCurrent: () => boolean) {
   try {
     for (const draft of await loadDrafts(session)) {
       if (!isCurrent()) break;
+      if (draft.clarificationId) continue;
       if (!["Pending sync", "Sync failed", "Syncing"].includes(draft.status))
         continue;
       try {
@@ -202,7 +208,11 @@ async function runSync(session: Session, isCurrent: () => boolean) {
           description: "",
         };
       } catch (error) {
-        draft.status = "Sync failed";
+        draft.requiresReview =
+          error instanceof ApiError &&
+          error.status === 409 &&
+          !!draft.payload.conversation_id;
+        draft.status = draft.requiresReview ? "Saved locally" : "Sync failed";
         draft.error =
           error instanceof Error
             ? error.message
