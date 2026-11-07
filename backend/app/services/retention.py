@@ -25,6 +25,6 @@ def retained_record(db, item):
 
 def retained_job(db, job):
     result = record_dict(job, {"payload", "lease_token"})
-    if job.kind in {"transcribe", "extract", "speak"} and expired(db, job):
+    if job.kind in {"transcribe", "extract", "speak", "conversation_transcribe", "conversation_analyze"} and expired(db, job):
         result["result"] = {"retention_expired": True}
     return result
