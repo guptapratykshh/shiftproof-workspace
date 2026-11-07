@@ -242,6 +242,9 @@ class ReportFields(Input):
     reference_period: str | None = Field(default=None, max_length=200)
     observation_time: str | None = Field(default=None, max_length=200)
     quantity_basis: Literal["total", "additional"] | None = None
+    quantity_stage: Literal["manufactured", "dispatched", "received"] | None = None
+    transfer_reference: str | None = Field(default=None, max_length=200)
+    transfer_complete: bool | None = None
     quantity: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     unit: str | None = Field(default=None, max_length=40)
     operational_status: str | None = Field(default=None, max_length=200)
@@ -271,6 +274,8 @@ class ReportInput(Input):
     immediate_safety: bool = False
     immediate_alert_id: str | None = None
     confirmed: Literal[True]
+    conversation_id: str | None = None
+    conversation_revision: int | None = Field(default=None, ge=0)
 
     @field_validator("occurred_at")
     @classmethod
