@@ -5,7 +5,8 @@ from datetime import timedelta
 from sqlalchemy import or_, select
 
 from ..models import Department, DepartmentLink, Organization, Report, ReportVersion
-from .contradictions import compare
+from .contradictions import compare, possible_count_difference
+from .count_context import normalize_count_fields
 
 
 def linked_departments(db, organization_id, department_id):
@@ -36,7 +37,7 @@ def linked_departments(db, organization_id, department_id):
     ]
 
 
-def candidates(db, report, fields):
+def candidates(db, report, fields, *, include_context=False, context_decisions=None):
     links = linked_departments(db, report.organization_id, report.department_id)
     departments = {report.department_id}
     for link in links:
@@ -70,6 +71,12 @@ def candidates(db, report, fields):
             continue
         cross = other.department_id != report.department_id
         findings = compare(fields, version.fields, report, other, timezone, cross_department=cross)
+        if include_context and not cross and not any(f["field"] == "quantity" for f in findings):
+            # A noun in an older statement can support a question, not silently
+            # change that report's confirmed unit or create a strict conflict.
+            source_fields = normalize_count_fields(version.fields, version.text)
+            relation = (context_decisions or {}).get(f"{other.id}:{version.number}")
+            findings += possible_count_difference(fields, source_fields, report, other, relation)
         if not findings:
             continue
         owner = report.department_id
