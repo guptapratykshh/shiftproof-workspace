@@ -21,7 +21,8 @@ def normalized(value):
 def identifier(value, kind=""):
     value = normalized(spoken_numbers(str(value or "")))
     prefixes = {"batch": r"^(?:batch|बैच)\s*[-_:]?\s*", "order": r"^(?:order|ord|ऑर्डर)\s*[-_:]?\s*",
-                "task_reference": r"^(?:task|कार्य)\s*[-_:]?\s*"}
+                "task_reference": r"^(?:task|कार्य)\s*[-_:]?\s*",
+                "transfer_reference": r"^(?:transfer|shipment|ट्रांसफर|ट्रांसफ़र|शिपमेंट)\s*(?:id\s*)?[-_:]?\s*"}
     if kind in prefixes:
         value = re.sub(prefixes[kind], "", value)
     return re.sub(r"[\s\-_‐‑–—]+", "", value)
@@ -81,10 +82,12 @@ def status(fields, key):
     return next((state for state, aliases in STATUS_ALIASES[key].items() if value in aliases), None)
 
 
-def context_matches(a, b, entities):
+def context_matches(a, b, entities, cross_department=False):
     # Shared contradictory identifiers always separate the contexts. Missing
     # optional location/product metadata is not itself a contradiction.
-    for key in ("machine", "batch", "order", "task_reference", "product", "work_area"):
+    for key in ("machine", "batch", "order", "task_reference", "product", "work_area", "transfer_reference"):
+        if cross_department and key in {"machine", "work_area"}:
+            continue
         if a.get(key) and b.get(key) and identifier(a[key], key) != identifier(b[key], key):
             return False
     return any(a.get(key) and b.get(key) and identifier(a[key], key) == identifier(b[key], key)
@@ -118,12 +121,17 @@ def same_observation(a, b, report_a, report_b):
     return abs((report_a.occurred_at - report_b.occurred_at).total_seconds()) <= 300
 
 
-def compare(a, b, report_a, report_b, timezone="UTC"):
-    if not same_period(a, b, report_a, report_b, timezone):
+def compare(a, b, report_a, report_b, timezone="UTC", cross_department=False):
+    transfer = bool(a.get("transfer_reference") and b.get("transfer_reference")
+                    and identifier(a["transfer_reference"], "transfer_reference") == identifier(b["transfer_reference"], "transfer_reference"))
+    if not transfer and not same_period(a, b, report_a, report_b, timezone):
         return []
     findings = []
-    if (context_matches(a, b, ("batch", "machine", "order", "task_reference"))
-            and a.get("category") == b.get("category")
+    entities = ("batch", "order", "transfer_reference") if cross_department else ("batch", "machine", "order", "task_reference", "transfer_reference")
+    stages = {a.get("quantity_stage"), b.get("quantity_stage")} - {None}
+    transfer_gap = len(stages) == 2
+    if (context_matches(a, b, entities, cross_department)
+            and (a.get("category") == b.get("category") or transfer_gap)
             and (not (a.get("observation_time") or b.get("observation_time")) or same_observation(a, b, report_a, report_b))
             and a.get("quantity_basis") != "additional" and b.get("quantity_basis") != "additional"
             and a.get("quantity") is not None and b.get("quantity") is not None):
@@ -133,15 +141,19 @@ def compare(a, b, report_a, report_b, timezone="UTC"):
         qa, qb = a["quantity"] * factor_a, b["quantity"] * factor_b
         if unit_a == unit_b and not math.isclose(qa, qb, rel_tol=0, abs_tol=1e-9):
             findings.append({
-                "category": "quantity_mismatch", "title": "Quantity mismatch", "severity": "high",
+                "category": "transfer_gap" if transfer_gap else "quantity_mismatch",
+                "title": "Transfer difference" if transfer_gap else "Quantity mismatch", "severity": "high",
                 "field": "quantity", "values": [a["quantity"], b["quantity"]],
                 "units": [a.get("unit"), b.get("unit")],
                 "difference": abs(qa - qb) / factor_a, "difference_unit": a.get("unit"),
+                "stages": [a.get("quantity_stage"), b.get("quantity_stage")],
                 "recommended_action": "Supervisor verification required: check the production register, counting basis and reporting period.",
             })
     if same_observation(a, b, report_a, report_b):
         for key, category, title, severity, entities, action in RULES:
-            if not context_matches(a, b, entities):
+            if cross_department and not context_matches(a, b, ("batch", "order", "transfer_reference"), True):
+                continue
+            if not context_matches(a, b, entities, cross_department):
                 continue
             left, right = status(a, key), status(b, key)
             incompatible = bool(left and right and left != right)
