@@ -26,6 +26,8 @@ The written version remains available if generation fails. The authenticated `/v
 
 Run matching API and worker versions on every machine sharing the same database. An older worker can claim a new voice job and process it using the older adapter. Live verification on this branch executed the synthetic jobs with the current worker implementation; it does not verify other developers' processes.
 
+Cached speech now checks whether the generated file is present and complete before reuse. A missing or truncated generated file can be rebuilt from its retained script through the playback endpoint or **Try listening again**. Local recovery reserves the existing job and runs after commit on the API server's filesystem, so another machine cannot claim that repair while its lease is active. Healthy audio is reused, storage outages remain visible, and deleted/expired audio or revoked source access blocks regeneration. Original recordings and handover acknowledgements are unchanged. On 7 November 2026, both affected local handover recordings were rebuilt and the reported handover played successfully through the Cloudflare URL in Chrome. Recovery, retention, provider-failure and browser retry checks passed.
+
 ## Gemini structured extraction
 
 Set `GEMINI_API_KEY` and an available `GEMINI_MODEL` (default `gemini-2.5-flash`). `backend/app/integrations/gemini/client.py` uses the official Google SDK and a structured response schema for report fields. It retains uncertainty, validates identifiers/numbers against the source and rejects unsupported task IDs. Task association suggestions are restricted to actual visible tasks and always require worker confirmation.
