@@ -323,7 +323,7 @@ for (const scenario of cases) {
         }
         await page.getByLabel('I reviewed this report and any uncertainty is stated clearly.').check();
         const response = page.waitForResponse(response => response.url().endsWith('/api/v1/reports') && response.request().method() === 'POST');
-        await page.getByRole('button', { name: 'Submit report', exact: true }).click();
+        await page.getByRole('button', { name: 'Confirm and send', exact: true }).click();
         const result = await response;
         expect(result.status(), await result.text()).toBe(201);
         reportIds.push((await result.json()).report.id);
