@@ -3871,3 +3871,65 @@ textarea {
   object-fit: contain;
   flex-shrink: 0;
 }
+
+/* One conversation beside the worker's recording, with the existing theme. */
+.report-conversation {
+  min-width: 0;
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--background);
+}
+.report-conversation h3 {
+  margin: 0 0 16px;
+}
+.conversation-history summary {
+  padding-block: 10px;
+  cursor: pointer;
+}
+.conversation-turn {
+  margin-block: 12px;
+  padding: 12px 16px;
+  border-inline-start: 3px solid var(--border);
+  overflow-wrap: anywhere;
+}
+.conversation-turn.assistant {
+  border-color: var(--primary);
+}
+.conversation-turn p,
+.conversation-question p,
+.conversation-summary p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.conversation-question {
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--primary);
+}
+.conversation-question .work-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-block: 16px;
+}
+.report-conversation .button {
+  min-height: 44px;
+  white-space: normal;
+}
+.conversation-summary {
+  margin-top: 16px;
+}
+@media (max-width: 480px) {
+  .report-conversation {
+    padding: 12px;
+  }
+  .conversation-question {
+    padding: 12px;
+  }
+  .conversation-question .button {
+    flex: 1 1 140px;
+  }
+}
