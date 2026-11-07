@@ -310,10 +310,7 @@ export function Landing() {
             {t("So should the context.", "जानकारी भी जारी रहनी चाहिए।")}
           </h2>
           <Link to="/signup" className="button button-primary">
-            {t("Create your organization", "अपना संगठन बनाएँ")}
-          </Link>
-          <Link to="/signin" className="closing-signin">
-            {t("Sign in", "साइन इन")}
+            {t("Take a demo", "डेमो देखें")}
           </Link>
         </section>
       </main>
