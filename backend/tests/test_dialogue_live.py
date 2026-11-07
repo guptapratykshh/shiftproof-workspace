@@ -107,3 +107,39 @@ def test_synthetic_gnani_conversation_with_real_answer_interpretation(setup, mon
         201,
     )
     assert result["report"]["needs_attention"]
+
+
+@pytest.mark.skipif(
+    os.environ.get("SHIFTPROOF_LIVE_DIALOGUE") != "1", reason="Requires explicit live-provider opt-in"
+)
+def test_real_hinglish_product_counts_and_spoken_scope_question(setup, monkeypatch):
+    from test_count_context import FIRST, SECOND, submit_conversation
+
+    from app.services.count_context import product_key
+    s = setup
+    private = Settings()
+    monkeypatch.setattr(get_settings(), "gnani_api_key", private.gnani_api_key)
+    monkeypatch.setattr(get_settings(), "gemini_api_key", private.gemini_api_key)
+    login(s.client, "worker")
+    a = {**body(s), "text": FIRST, "fields": {"category": "general"}}
+    ca = turn(s, create(s, a), FIRST, "update", a)
+    assert ca["state"]["draft"]["fields"]["quantity"] == 75
+    assert ca["state"]["draft"]["fields"]["unit"] in {"items", "products", "pieces"}
+    assert ca["state"]["draft"]["fields"]["quantity_stage"] == "packed"
+    ca = turn(s, ca, "ये kitchen के products की गिनती है।", "reply")
+    assert product_key(ca["state"]["draft"]["fields"]["product"]) == "kitchen item"
+    if ca["status"] == "awaiting_answer":
+        ca = turn(s, ca, "I am not sure", "uncertain")
+    expect(submit_conversation(s, ca), 201)
+    login(s.client, "worker", employee="W-02")
+    b = {**body(s), "shift_id": None, "text": SECOND, "fields": {"category": "general"}}
+    cb = turn(s, create(s, b), SECOND, "update", b)
+    assert cb["status"] == "awaiting_answer"
+    assert "75" in cb["state"]["question"] and "80" in cb["state"]["question"]
+    speech = execute(s, cb["state"]["speech_job_id"])
+    assert speech["status"] == "succeeded", speech.get("error")
+    cb = turn(s, cb, "हाँ, दोनों उसी काम और उसी समय की कुल गिनती हैं। मैंने अस्सी गिने हैं।", "reply")
+    assert cb["status"] == "ready"
+    assert cb["state"]["draft"]["fields"]["quantity"] == 80
+    assert cb["state"]["findings"][0]["finding"]["scope_relation"] == "same"
+    assert expect(submit_conversation(s, cb), 201)["report"]["needs_attention"]
