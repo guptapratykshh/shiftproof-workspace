@@ -138,6 +138,9 @@ export type ReportFields = {
   reference_period?: string | null;
   observation_time?: string | null;
   quantity_basis?: "total" | "additional" | null;
+  quantity_stage?: "manufactured" | "dispatched" | "received" | null;
+  transfer_reference?: string | null;
+  transfer_complete?: boolean | null;
   quality_status?: "passed" | "rejected" | "pending" | null;
   dispatch_status?: "dispatched" | "pending" | null;
   machine_status?: "operational" | "maintenance" | "stopped" | "failed" | null;
@@ -166,6 +169,8 @@ export type ReportPayload = {
   immediate_safety: boolean;
   immediate_alert_id?: string | null;
   confirmed: true;
+  conversation_id?: string | null;
+  conversation_revision?: number | null;
 };
 export type Asset = Base & {
   name: string;
@@ -228,6 +233,11 @@ export type Report = Base & {
     version_number: number;
   })[];
   clarifications?: Clarification[];
+  conversations?: {
+    id: string;
+    status: string;
+    turns: { id: string; role: string; text: string }[];
+  }[];
   task_links?: { task_id: string; follow_up: boolean }[];
   conflict_ids?: string[];
 };
@@ -246,6 +256,13 @@ export type AlertRecord = Base & {
   history?: History[];
 };
 export type Conflict = Base & {
+  can_resolve?: boolean;
+  shared_sources?: {
+    department: string;
+    version: number;
+    fields: ReportFields;
+    responses: string[];
+  }[];
   title: string;
   discrepancy: string;
   status: string;
