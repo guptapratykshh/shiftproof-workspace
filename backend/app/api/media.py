@@ -260,12 +260,19 @@ def retry(
     record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     job = scoped(db, BackgroundJob, record_id, user)
-    if job.actor_id != user.id or job.kind not in {"transcribe", "extract", "speak"}:
+    if job.actor_id != user.id or job.kind not in {"transcribe", "extract", "speak", "conversation_transcribe", "conversation_analyze"}:
         fail(403, "This job cannot be retried from this account.")
     if job.status != "failed":
         fail(409, "Only failed processing requests can be retried.")
     if expired(db, job):
         fail(410, "The original processing source is no longer retained. Create a new report.")
+    if job.kind.startswith("conversation_"):
+        from ..services.conversations import accessible
+        conversation = accessible(db, user, job.payload["conversation_id"])
+        if conversation.revision != job.payload["revision"] or conversation.status == "submitted":
+            fail(409, "This conversation changed. Use the latest update.")
+        conversation.status = "processing"
+        conversation.state = {**conversation.state, "check_error": ""}
     job.status, job.attempts, job.error, job.available_at = "queued", 0, "", now()
     return record_dict(job, {"payload", "lease_token"})
 
