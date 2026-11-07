@@ -18,6 +18,7 @@ from ..models import (
     FileAsset,
     Organization,
     Report,
+    ReportConversation,
     ReportEvidence,
     ReportReview,
     ReportTaskLink,
@@ -195,7 +196,12 @@ def detect_conflicts(db: Session, report: Report, version: ReportVersion):
     from .comparisons import candidates
     from .conversations import recorded_answer
     fields = version.fields
-    for match in candidates(db, report, fields):
+    conversation = db.scalar(select(ReportConversation).where(
+        ReportConversation.report_id == report.id, ReportConversation.status == "submitted"))
+    # Scope answers belong to this exact submitted version, never a later edit.
+    checked = bool(conversation and conversation.state.get("draft", {}).get("fields") == fields)
+    for match in candidates(db, report, fields, include_context=checked,
+                            context_decisions=conversation.state.get("context_decisions", {}) if checked else None):
         previous, other, findings = match["report"], match["version"], match["findings"]
         already = db.scalar(
             select(ConflictReport.conflict_id).where(
