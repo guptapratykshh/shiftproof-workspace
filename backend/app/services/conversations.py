@@ -57,7 +57,7 @@ def fingerprint(draft):
     return digest(json.dumps({k: draft.get(k) for k in keys}, sort_keys=True, default=str))
 
 
-def comparison(db, conversation, draft):
+def comparison(db, conversation, draft, state=None):
     from datetime import datetime
 
     report = SimpleNamespace(
@@ -66,10 +66,12 @@ def comparison(db, conversation, draft):
         department_id=conversation.department_id,
         author_id=conversation.author_id,
         shift_id=draft.get("shift_id"),
+        task_id=draft.get("task_id"),
         occurred_at=datetime.fromisoformat(draft["occurred_at"]),
     )
     result = []
-    for match in candidates(db, report, draft["fields"]):
+    for match in candidates(db, report, draft["fields"], include_context=True,
+                            context_decisions=(state or conversation.state).get("context_decisions", {})):
         source, version = match["report"], match["version"]
         if source.id == conversation.report_id:
             continue
@@ -105,7 +107,8 @@ def question_for(conversation, state):
             or fields.get("order")
             or fields.get("machine")
             or fields.get("task_reference")
-            or ""
+            or fields.get("product")
+            or "this work"
         )
         units = finding.get("units", ["", ""])
         unit, previous_unit = (units[0] or ""), (units[1] or "")
@@ -136,7 +139,14 @@ def question_for(conversation, state):
                 if hi
                 else f"{entry['source_department']} reported {previous} {previous_unit} for {entity}. You reported {current} {unit}.{gap} Is this the same batch and complete delivery? Please confirm your count or explain the context."
             )
-        if finding["category"] not in {"quantity_mismatch", "transfer_gap"}:
+        if finding["category"] == "quantity_context":
+            source = "आपने पहले" if entry["same_worker"] else entry["source_department"] + " की एक भेजी गई रिपोर्ट में"
+            text = (
+                f"{source} {entity} के लिए {previous} {previous_unit} बताया है। आपने अब {current} {unit} बताया। क्या दोनों गिनतियाँ उसी काम और उसी समय की कुल गिनती हैं, या अलग अपडेट हैं?"
+                if hi else
+                f"{'Your earlier report' if entry['same_worker'] else 'A submitted report in ' + entry['source_department']} says {previous} {previous_unit} for {entity}. You said {current} {unit}. Do both counts describe the same work and reporting period, or are they different updates?"
+            )
+        elif finding["category"] not in {"quantity_mismatch", "transfer_gap"}:
             text = (
                 f"{entity}: पहले '{previous}', अब '{current}' दर्ज है। क्या दोनों उसी समय की स्थिति हैं? अपनी बात की पुष्टि या सुधार करें।"
                 if hi
@@ -144,6 +154,10 @@ def question_for(conversation, state):
             )
         return plain_speech(text), [entry["key"]]
     fields = state["draft"]["fields"]
+    # Once a worker has answered a possible match, retain the scope decision;
+    # do not immediately repeat the same missing-reference question.
+    if state.get("context_decisions"):
+        return "", []
     if fields.get("quantity") is not None and not any(
         fields.get(k) for k in ("batch", "machine", "order", "task_reference", "transfer_reference")
     ):
@@ -181,7 +195,7 @@ def speech_job(db, conversation, text):
 
 
 def finish_analysis(db, conversation, state):
-    state["findings"] = comparison(db, conversation, state["draft"])
+    state["findings"] = comparison(db, conversation, state["draft"], state)
     for finding in state["findings"]:
         claim = (
             finding["report_id"] + ":" + str(finding["version_number"]) + ":" + finding["finding"]["category"]
@@ -189,9 +203,18 @@ def finish_analysis(db, conversation, state):
         if state.get("answered_claims", {}).get(claim) == finding["finding"]["values"]:
             state["answered_keys"] = list(set(state.get("answered_keys", []) + [finding["key"]]))
     question, keys = question_for(conversation, state)
-    if state.get("answer_type") == "uncertain" or state.get("question_count", 0) >= 3:
+    missing_context = bool(question and not keys)
+    stopped_early = bool(state.get("explicit_uncertainty") or (question and state.get("question_count", 0) >= 3))
+    if stopped_early:
         question, keys = "", []
-        state["unresolved"] = True
+    state["comparison_incomplete"] = missing_context or any(
+        f["finding"].get("scope_relation") in {"unchecked", "unsure"} for f in state["findings"]
+    )
+    # Declining a possible match does not establish a scope for future reports.
+    if not state["findings"] and state.get("context_decisions"):
+        state["comparison_incomplete"] = True
+    state["unresolved"] = bool(stopped_early or state["comparison_incomplete"]
+                               or state["findings"])
     state["question"], state["question_keys"] = question, keys
     state["checked_fingerprint"] = fingerprint(state["draft"])
     state["check_error"] = ""
@@ -233,6 +256,7 @@ def public_state(db, conversation):
     state.pop("answered_keys", None)
     state.pop("answered_claims", None)
     state.pop("answers", None)
+    state.pop("context_decisions", None)
     result = record_dict(conversation, {"state", "client_request_id"})
     result["state"] = state
     result["turns"] = [
@@ -357,7 +381,7 @@ def process_analysis(db, job, user):
         db.commit()
     if kind in {"reply", "uncertain"}:
         answer = (
-            {"response_type": "uncertain", "fields": {}}
+            {"response_type": "uncertain", "fields": {}, "explicit_uncertainty": True}
             if kind == "uncertain"
             else interpret_reply(text, state.get("question", ""), draft["fields"])
         )
@@ -368,6 +392,19 @@ def process_analysis(db, job, user):
                 "This conversation is too long for one report. Keep the saved answers and shorten the report text."
             )
         state["answer"], state["answer_type"] = text, answer["response_type"]
+        state["explicit_uncertainty"] = answer.get("explicit_uncertainty", False)
+        for finding in state.get("findings", []):
+            if (finding["key"] in state.get("question_keys", [])
+                    and finding["finding"]["category"] == "quantity_context"):
+                relation = answer.get("scope_relation")
+                # A plain yes answers this specific same-work question. Model
+                # confirmation of a count alone must not establish its scope.
+                if relation is None and answer["response_type"] == "confirm" and not answer["fields"]:
+                    from ..integrations.gemini.dialogue import is_simple_confirmation
+                    relation = "same" if is_simple_confirmation(text) else "unsure"
+                state.setdefault("context_decisions", {})[
+                    f"{finding['report_id']}:{finding['version_number']}"
+                ] = relation or "unsure"
         state["answers"] = [
             *state.get("answers", []),
             {
@@ -406,6 +443,8 @@ def process_analysis(db, job, user):
             answered_claims={},
             question_count=0,
             unresolved=False,
+            explicit_uncertainty=False,
+            context_decisions={},
         )
     db.refresh(c)
     accessible(db, user, c.id)
