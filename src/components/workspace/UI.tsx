@@ -115,6 +115,8 @@ const words: Record<string, string> = {
   "Count describes": "गिनती किस चरण की है",
   "Transfer received in full?": "क्या पूरी डिलीवरी मिली?",
   manufactured: "निर्मित",
+  packed: "पैक किए गए",
+  ready_for_dispatch: "भेजने के लिए तैयार",
   received: "प्राप्त",
   "Complete delivery": "पूरी डिलीवरी",
   Partial: "आंशिक",
