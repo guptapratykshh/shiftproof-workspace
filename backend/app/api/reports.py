@@ -426,6 +426,26 @@ def conflict_detail(
         if va and vb:
             findings = compare(va.fields, vb.fields, a, b, db.get(Organization, user.organization_id).timezone,
                                cross_department=a.department_id != b.department_id)
+            if a.department_id == b.department_id and not any(f["field"] == "quantity" for f in findings):
+                from ..models import ReportConversation
+                from ..services.retention import expired
+                frozen = {a.id: va, b.id: vb}
+                for conversation in db.scalars(select(ReportConversation).where(
+                    ReportConversation.organization_id == user.organization_id,
+                    ReportConversation.report_id.in_(list(frozen)),
+                    ReportConversation.status == "submitted",
+                )):
+                    own = frozen[conversation.report_id]
+                    draft = conversation.state.get("draft", {})
+                    if expired(db, conversation) or draft.get("fields") != own.fields or draft.get("text") != own.text:
+                        continue
+                    for evidence in conversation.state.get("findings", []):
+                        peer = frozen.get(evidence["report_id"])
+                        finding = evidence["finding"]
+                        if (peer and peer.number == evidence["version_number"]
+                                and finding["category"] == "quantity_context"
+                                and not any(f["category"] == "quantity_context" for f in findings)):
+                            findings.append(finding)
     return {**record_dict(item), "reports": sources, "shared_sources": shared,
             "can_resolve": item.department_id in review, "findings": findings}
 
