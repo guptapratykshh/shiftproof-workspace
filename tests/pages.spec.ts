@@ -1,5 +1,69 @@
 import { expect, test } from "@playwright/test";
 
+test("each industry shows its own illustration through the dropdown and tabs", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  const names = [
+    "Manufacturing",
+    "Equipment maintenance",
+    "Warehousing",
+    "Quality assurance",
+    "Food processing",
+    "Construction",
+    "Healthcare",
+    "Facility management",
+  ];
+  const subjects = [
+    "production line",
+    "motor",
+    "forklift",
+    "microscope",
+    "mixing vat",
+    "tower crane",
+    "hospital bed",
+    "ventilation equipment",
+  ];
+  const artwork = page.locator(".motion-card svg[role=img]");
+  const captures: Buffer[] = [];
+  for (let index = 0; index < names.length; index++) {
+    await page
+      .getByRole("combobox", { name: "Handover industry" })
+      .selectOption(String(index));
+    await expect(artwork).toHaveAccessibleName(new RegExp(subjects[index]));
+    await expect(
+      page.getByRole("tab", { name: new RegExp(`^${names[index]} `) }),
+    ).toHaveAttribute("aria-selected", "true");
+    const capture = await artwork.screenshot({
+      path: testInfo.outputPath(`industry-${index}-light.png`),
+    });
+    expect(
+      captures.some((previous) => previous.equals(capture)),
+      `${names[index]} should have different artwork`,
+    ).toBe(false);
+    captures.push(capture);
+  }
+  await page.getByRole("button", { name: "Switch to dark theme" }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (let index = 0; index < names.length; index++) {
+    await page
+      .getByRole("tab", { name: new RegExp(`^${names[index]} `) })
+      .click();
+    await expect(
+      page.getByRole("combobox", { name: "Handover industry" }),
+    ).toHaveValue(String(index));
+    await expect(artwork).toHaveAccessibleName(new RegExp(subjects[index]));
+    await artwork.screenshot({
+      path: testInfo.outputPath(`industry-${index}-dark-mobile.png`),
+    });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(390);
+  }
+  await page.getByRole("button", { name: "Switch to Hindi" }).click();
+  await expect(artwork).toHaveAccessibleName(/सुविधा प्रबंधन/);
+});
+
 test("landing industry controls stay in sync and support keyboard navigation", async ({
   page,
 }) => {
