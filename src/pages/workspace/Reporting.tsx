@@ -620,6 +620,12 @@ export function ReportComposer() {
           </li>
         ))}
       </ol>
+      <p className="work-note">
+        {t(
+          "Only submitted reports are compared. Your draft is shared with your team after you tap Confirm and send.",
+          "तुलना केवल भेजी गई रिपोर्टों से होती है। पुष्टि करके भेजें दबाने के बाद आपका ड्राफ्ट टीम को दिखाई देगा।",
+        )}
+      </p>
       <div className="report-compose-layout">
         <div className="work-stack">
           <Panel title={t("01 / Capture your update", "01 / अपडेट दर्ज करें")}>
@@ -739,19 +745,22 @@ export function ReportComposer() {
             {audioPreview && (
               <div className="work-stack">
                 <audio controls src={audioPreview} />
-                <button
-                  className="button button-outline"
-                  onClick={() => void transcribe()}
-                  disabled={
-                    busy ||
-                    processing ||
-                    recording ||
-                    !online ||
-                    capabilities.data?.transcription === false
-                  }
-                >
-                  {t("Check recording again", "रिकॉर्डिंग फिर जाँचें")}
-                </button>
+                {(!dialogue.conversation ||
+                  dialogue.conversation.status === "unavailable") && (
+                  <button
+                    className="button button-outline"
+                    onClick={() => void transcribe()}
+                    disabled={
+                      busy ||
+                      processing ||
+                      recording ||
+                      !online ||
+                      capabilities.data?.transcription === false
+                    }
+                  >
+                    {t("Check recording again", "रिकॉर्डिंग फिर जाँचें")}
+                  </button>
+                )}
               </div>
             )}
             <label className="form-field field-wide report-text">
