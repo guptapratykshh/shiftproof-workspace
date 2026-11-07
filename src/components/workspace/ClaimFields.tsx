@@ -14,7 +14,13 @@ export const claimStatusFields = [
   {
     key: "quantity_stage",
     label: "Count describes",
-    values: ["manufactured", "dispatched", "received"],
+    values: [
+      "manufactured",
+      "packed",
+      "ready_for_dispatch",
+      "dispatched",
+      "received",
+    ],
   },
   {
     key: "quantity_basis",
