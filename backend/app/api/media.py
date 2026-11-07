@@ -1,7 +1,8 @@
 from typing import Literal
 import asyncio
+from datetime import timedelta
 
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import Field
 from sqlalchemy import select
@@ -9,14 +10,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
 from ..config import get_settings
-from ..db import get_db, now
+from ..db import get_db, new_id, now
 from ..models import BackgroundJob, FileAsset, HandoverVersion, TaskEvidence, Transcript, User
 from ..schemas import Input, ReportFields
 from ..security import admin, current_user, digest, fail, policy_value, require_department, scoped
 from ..services.common import audit, enqueue, record_dict
 from ..services.reports import check_sensitive_access
 from ..services.retention import expired, retained_job
-from ..services.storage import delete_bytes, read_bytes, store_asset, validate_bytes
+from ..services.storage import asset_available, delete_bytes, read_bytes, store_asset, validate_bytes
 
 router = APIRouter(tags=["Evidence and processing"])
 
@@ -175,7 +176,65 @@ class ReadbackInput(PlaybackInput):
     immediate_safety: bool = False
 
 
-def queue_playback(db, user, text, department_id, language, source):
+def validate_playback_source(db, user, job):
+    if expired(db, job):
+        fail(410, "The original processing source is no longer retained.")
+    require_department(db, user, job.payload["department_id"], active=True)
+    source = job.payload.get("source", "")
+    if source.startswith("handover:"):
+        from ..services.handovers import visible_handover
+        version = scoped(db, HandoverVersion, source.split(":", 1)[1], user)
+        visible_handover(db, user, version.handover_id)
+    elif source.startswith("conversation:"):
+        from ..services.conversations import accessible
+        _, identity, revision = source.split(":")
+        conversation = accessible(db, user, identity)
+        if conversation.revision != int(revision):
+            fail(409, "This question has changed. Use the current conversation.")
+
+
+def reserve_local_playback(job, background_tasks):
+    from ..worker import execute
+    job.status, job.lease_token = "processing", new_id()
+    job.leased_until = now() + timedelta(minutes=3)
+    # A failed local repair requires an explicit retry here, so an unrelated
+    # machine cannot take the repaired job and put its audio on another disk.
+    job.attempts = job.max_attempts
+    job.payload = {**job.payload, "recover_on_origin": True}
+    background_tasks.add_task(execute, job.id, job.lease_token)
+
+
+def recover_playback(db, user, job, background_tasks):
+    """Repair derived speech only, keeping the original source and job identity.
+
+    Local files are not shared by other machines using the same database. Reserve
+    the repair's lease here and execute after the request commits, on this API's
+    filesystem. Other queue workers cannot claim it while the lease is active.
+    """
+    validate_playback_source(db, user, job)
+    if job.status != "succeeded":
+        return
+    asset = db.get(FileAsset, job.result.get("asset_id")) if job.result.get("asset_id") else None
+    if not asset or asset.deleted_at or (asset.retention_until and asset.retention_until <= now()):
+        fail(410, "This generated audio is no longer retained.")
+    if asset.organization_id != user.organization_id or asset.owner_id != user.id:
+        fail(403, "This audio belongs to another account.")
+    try:
+        available = asset_available(asset)
+    except Exception:
+        fail(503, "Audio storage is temporarily unavailable. Please try again later.")
+    if available:
+        return
+    job.result, job.error, job.completed_at = {}, "", None
+    job.attempts, job.available_at = 0, now()
+    if get_settings().storage_mode == "local":
+        reserve_local_playback(job, background_tasks)
+    else:
+        job.status, job.lease_token, job.leased_until = "queued", None, None
+    audit(db, user, user.organization_id, "speech.regeneration_requested", "background_job", job.id)
+
+
+def queue_playback(db, user, text, department_id, language, source, background_tasks):
     settings = get_settings()
     if not settings.gnani_api_key:
         fail(503, "Spoken playback is not configured. Review your update in writing.")
@@ -190,12 +249,15 @@ def queue_playback(db, user, text, department_id, language, source):
         user.organization_id,
         user.id,
     )
+    if job.status == "succeeded":
+        recover_playback(db, user, job, background_tasks)
     return record_dict(job, {"payload", "lease_token"})
 
 
 @router.post("/report-readback", status_code=202)
 def report_readback(
-    values: ReadbackInput, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
+    values: ReadbackInput, background_tasks: BackgroundTasks,
+    user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     from ..services.voice import report_script
 
@@ -203,7 +265,7 @@ def report_readback(
     if not values.text.strip():
         fail(422, "Add your update before listening.")
     script = report_script(values.text, values.fields, values.language, values.immediate_safety)
-    return queue_playback(db, user, script, values.department_id, values.language, "report-readback")
+    return queue_playback(db, user, script, values.department_id, values.language, "report-readback", background_tasks)
 
 
 class ExtractionInput(Input):
@@ -257,11 +319,19 @@ def job_status(
 
 @router.post("/jobs/{record_id}/retry")
 def retry(
-    record_id: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
+    record_id: str, background_tasks: BackgroundTasks,
+    user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     job = scoped(db, BackgroundJob, record_id, user)
     if job.actor_id != user.id or job.kind not in {"transcribe", "extract", "speak", "conversation_transcribe", "conversation_analyze"}:
         fail(403, "This job cannot be retried from this account.")
+    if job.kind == "speak":
+        validate_playback_source(db, user, job)
+        if job.status == "succeeded":
+            recover_playback(db, user, job, background_tasks)
+            return record_dict(job, {"payload", "lease_token"})
+        if job.status in {"queued", "processing"}:
+            return record_dict(job, {"payload", "lease_token"})
     if job.status != "failed":
         fail(409, "Only failed processing requests can be retried.")
     if expired(db, job):
@@ -274,12 +344,15 @@ def retry(
         conversation.status = "processing"
         conversation.state = {**conversation.state, "check_error": ""}
     job.status, job.attempts, job.error, job.available_at = "queued", 0, "", now()
+    if job.kind == "speak" and job.payload.get("recover_on_origin") and get_settings().storage_mode == "local":
+        reserve_local_playback(job, background_tasks)
     return record_dict(job, {"payload", "lease_token"})
 
 
 @router.post("/handover-audio/{version_id}", status_code=202)
 def handover_audio(
     version_id: str,
+    background_tasks: BackgroundTasks,
     values: PlaybackInput | None = None,
     user: User = Depends(current_user),
     db: Session = Depends(get_db, scope="function"),
@@ -297,4 +370,5 @@ def handover_audio(
         handover.department_id,
         language,
         f"handover:{version.id}",
+        background_tasks,
     )
