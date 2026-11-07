@@ -27,6 +27,7 @@ export type Conversation = {
     answer?: string;
     answer_type?: string;
     unresolved?: boolean;
+    comparison_incomplete?: boolean;
     findings: {
       key: string;
       source_department: string;
@@ -617,7 +618,9 @@ export function ConversationPanel({
           {typed && (
             <div className="work-stack">
               <div className="form-field">
-                <label htmlFor={answerId}>{t("Your answer", "आपका उत्तर")}</label>
+                <label htmlFor={answerId}>
+                  {t("Your answer", "आपका उत्तर")}
+                </label>
                 <textarea
                   id={answerId}
                   rows={3}
@@ -689,7 +692,12 @@ export function ConversationPanel({
                     ? t("Received", "प्राप्त")
                     : c.state.draft.fields.quantity_stage === "manufactured"
                       ? t("Manufactured", "निर्मित")
-                      : t("Dispatched", "भेजे गए")}
+                      : c.state.draft.fields.quantity_stage === "packed"
+                        ? t("Packed", "पैक किए गए")
+                        : c.state.draft.fields.quantity_stage ===
+                            "ready_for_dispatch"
+                          ? t("Ready for dispatch", "भेजने के लिए तैयार")
+                          : t("Dispatched", "भेजे गए")}
                 </>
               )}
               {c.state.draft.fields.transfer_reference && (
@@ -698,6 +706,14 @@ export function ConversationPanel({
             </p>
           )}
           <p>{c.state.draft.text}</p>
+          {c.state.comparison_incomplete && (
+            <p className="work-warning">
+              {t(
+                "Comparison is incomplete. The work or reporting period still needs confirmation; this does not mean the counts agree.",
+                "तुलना अधूरी है। काम या समय की पुष्टि बाकी है; इसका मतलब यह नहीं कि गिनतियाँ मेल खाती हैं।",
+              )}
+            </p>
+          )}
           {!!c.state.findings.length && (
             <p>
               {t(
