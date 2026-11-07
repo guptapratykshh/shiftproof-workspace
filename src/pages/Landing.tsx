@@ -9,7 +9,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Header } from "../components/Header";
-import { FactoryScene } from "../components/FactoryScene";
+import { IndustryScene } from "../components/IndustryScene";
 import { industries } from "../lib/industries";
 import { usePreferences } from "../lib/preferences";
 
@@ -139,7 +139,7 @@ export function Landing() {
               </select>
               <ChevronDown size={14} aria-hidden="true" />
             </div>
-            <FactoryScene />
+            <IndustryScene industry={industry.id} />
             <div className="scenario-report" aria-live="polite">
               <span className="report-icon">
                 <CheckCheck size={19} />
@@ -310,10 +310,7 @@ export function Landing() {
             {t("So should the context.", "जानकारी भी जारी रहनी चाहिए।")}
           </h2>
           <Link to="/signup" className="button button-primary">
-            {t("Create your organization", "अपना संगठन बनाएँ")}
-          </Link>
-          <Link to="/signin" className="closing-signin">
-            {t("Sign in", "साइन इन")}
+            {t("Take a demo", "डेमो देखें")}
           </Link>
         </section>
       </main>

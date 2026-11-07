@@ -7,6 +7,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import boto3
+from botocore.exceptions import ClientError
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
@@ -43,6 +44,23 @@ def read_bytes(asset: FileAsset):
     if settings.storage_mode == "s3":
         return s3().get_object(Bucket=settings.s3_bucket, Key=asset.storage_key)["Body"].read()
     return (settings.storage_directory / asset.storage_key).read_bytes()
+
+
+def asset_available(asset: FileAsset):
+    """Distinguish a missing/truncated file from a storage service outage."""
+    settings = get_settings()
+    if settings.storage_mode == "s3":
+        try:
+            metadata = s3().head_object(Bucket=settings.s3_bucket, Key=asset.storage_key)
+        except ClientError as error:
+            if error.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
+                return False
+            raise
+        return metadata["ContentLength"] == asset.byte_size
+    try:
+        return (settings.storage_directory / asset.storage_key).stat().st_size == asset.byte_size
+    except FileNotFoundError:
+        return False
 
 
 def delete_bytes(asset: FileAsset):

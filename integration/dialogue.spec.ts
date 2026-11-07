@@ -740,3 +740,82 @@ test("product counts ask about scope before sending a 75 versus 80 difference fo
   await expect(page.locator(".workspace-content")).toContainText("75");
   await expect(page.locator(".workspace-content")).toContainText("80");
 });
+
+test("handover listening recovers a missing generated file instead of repeating the failed download", async ({
+  page,
+}, testInfo) => {
+  await login(page, "supervisor");
+  const handover = await send(page.context().request, "/handovers", {
+    department_id: seed.departmentId,
+    shift_id: seed.shiftId,
+    shift_date: new Date().toISOString().slice(0, 10),
+  });
+  await send(page.context().request, `/handovers/${handover.id}/publish`, {
+    version: handover.version,
+    notes: "Inspection remains pending. Do not release the batch.",
+    changes: "Test handover",
+  });
+  let removed = false;
+  await page.route("**/api/v1/files/*", async (route) => {
+    if (!removed && route.request().method() === "GET") {
+      const assetId = new URL(route.request().url()).pathname
+        .split("/")
+        .at(-1)!;
+      // Remove only this generated fixture from the isolated browser database.
+      execFileSync(path.resolve("backend/.venv/bin/python"), [
+        "-c",
+        `
+import sqlite3,sys
+from pathlib import Path
+root=Path('/tmp/shiftproof-dialogue-qa')
+with sqlite3.connect(root/'browser-tests.db') as db:
+    row=db.execute('SELECT storage_key, name FROM file_assets WHERE id=?',(sys.argv[1],)).fetchone()
+assert row and row[1]=='handover.wav'
+file=(root/'evidence'/row[0]).resolve()
+assert file.is_relative_to((root/'evidence').resolve())
+file.unlink()
+`,
+        assetId,
+      ]);
+      removed = true;
+    }
+    await route.continue();
+  });
+  await page.goto(`/workspace/handovers/${handover.id}`);
+  await page
+    .getByRole("button", { name: "Listen to this version", exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      "Evidence storage is temporarily unavailable. Try again later.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Try listening again", exact: true })
+    .click();
+  await expect(page.locator(".voice-playback audio")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Evidence storage is temporarily unavailable. Try again later.",
+      { exact: true },
+    ),
+  ).toHaveCount(0);
+  await expect
+    .poll(() =>
+      page
+        .locator(".voice-playback audio")
+        .evaluate((element) => (element as HTMLAudioElement).duration),
+    )
+    .toBeGreaterThan(0);
+  await page.screenshot({
+    path: testInfo.outputPath("handover-playback-recovered-desktop.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator(".voice-playback").scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath("handover-playback-recovered-mobile.png"),
+    fullPage: false,
+  });
+});

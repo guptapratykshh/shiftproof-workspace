@@ -90,8 +90,13 @@ export function VoicePlayback({
     setError(null);
     try {
       if (job.data?.status === "succeeded" && job.data.result.asset_id) {
-        // Retry the private download without paying to synthesize it again.
-        setDownloadAttempt((value) => value + 1);
+        // Keep healthy cached audio, but let the server recreate a missing
+        // generated file instead of requesting that same missing URL forever.
+        await post(`/jobs/${jobId}/retry`);
+        const latest = await job.refetch();
+        if (latest.data?.status === "succeeded") {
+          setDownloadAttempt((value) => value + 1);
+        }
       } else if (job.data?.status === "failed") {
         await post(`/jobs/${jobId}/retry`);
         await job.refetch();
