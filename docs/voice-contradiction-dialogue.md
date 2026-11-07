@@ -54,3 +54,17 @@ The live-provider test requires `SHIFTPROOF_LIVE_DIALOGUE=1`; it sends only fict
 - Production build and TypeScript checks passed. Existing bundle-size/dependency-comment warnings remain.
 
 Live services can fail transiently; an earlier STT attempt and an isolated Atlas test bootstrap failed. The final live conversation completed successfully, and the app retains the explicit unavailable/retry path. This verification is not a promise of uninterrupted provider availability.
+
+## Product-count clarification (7 November 2026)
+
+The reported 75/80 kitchen-products example had two private conversation drafts and no submitted report. A saved conversation is not a shared claim: Worker A must confirm and send before Worker B can compare against it. The Report page now explains this explicitly. Existing drafts are not submitted or rewritten by this fix.
+
+Extraction retains explicitly counted products/items as count units and distinguishes packed or ready-for-dispatch goods from manufactured or dispatched goods. Hindi connecting words and common product-noun spellings are normalized for product matching; batch/order identifiers remain strict. A partial answer naming a product does not end checking merely because the model classified its remaining context as uncertain.
+
+Within the same department, different counts of a matching product or task can now raise a **possible count difference** when the batch or period is missing. The spoken question asks whether these are totals for the same work and reporting period. It does not assume two counts are contradictory. A same-work confirmation retains the discrepancy for review; explicitly different work avoids a false conflict; an uncertain answer keeps the possible difference pending. Corrections that remove the mismatch retain the conversation without a new conflict. Decisions are bound to source report versions and checked again at submission.
+
+Cross-department comparisons still require the existing directional link and shared operational identifiers; product-only matches do not expose another department's reports. Different explicit batches, periods, products, additional quantities, and incompatible units remain separate. Unspecified units do not establish a numeric discrepancy. Context that remains missing is labelled **Comparison is incomplete**, rather than implying that all counts agree. Only **Confirm and send** creates the report and verification notifications.
+
+Regression coverage: `backend/tests/test_count_context.py`, the kitchen-products live-provider case in `backend/tests/test_dialogue_live.py`, and the product-count browser scenario in `integration/dialogue.spec.ts`. The live scenario uses the supplied fictional Hindi/Hinglish sentences with real Gemini interpretation, a Gnani spoken question, and an isolated MongoDB database. No user drafts are changed by tests.
+
+Verification for this fix: the full backend run passed 172 tests with 6 opt-in skips; the final focused run passed 119 tests, including the additional legacy-unit and supervisor-evidence regressions. Both live-provider scenarios passed on isolated MongoDB. All five conversation browser scenarios and all 42 contradiction scenarios were verified (the product scenario and missing-unit regression used targeted reruns). The production build passed. Worker and supervisor authenticated page checks passed on localhost and the current Cloudflare address. Updated synthetic desktop/mobile captures are in `.sites-runtime/dialogue-review`.
