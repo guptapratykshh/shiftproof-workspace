@@ -138,7 +138,13 @@ export type ReportFields = {
   reference_period?: string | null;
   observation_time?: string | null;
   quantity_basis?: "total" | "additional" | null;
-  quantity_stage?: "manufactured" | "dispatched" | "received" | null;
+  quantity_stage?:
+    | "manufactured"
+    | "packed"
+    | "ready_for_dispatch"
+    | "dispatched"
+    | "received"
+    | null;
   transfer_reference?: string | null;
   transfer_complete?: boolean | null;
   quality_status?: "passed" | "rejected" | "pending" | null;
