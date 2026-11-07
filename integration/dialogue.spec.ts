@@ -250,12 +250,12 @@ test.beforeAll(async () => {
   });
   await send(context, "/organization/activate", {});
   const workers = [];
-  for (let index = 1; index <= 2; index++) {
+  for (let index = 1; index <= 3; index++) {
     const worker = await send(context, "/workers", {
       name: `QA Worker ${index}`,
       employee_code: `QA-0${index}`,
-      department_ids: [index === 1 ? department.id : receiving.id],
-      primary_department_id: index === 1 ? department.id : receiving.id,
+      department_ids: [index === 2 ? receiving.id : department.id],
+      primary_department_id: index === 2 ? receiving.id : department.id,
       team_ids: index === 1 ? [team.id] : [],
       shift_id: shift.id,
       skills: ["packing"],
@@ -424,6 +424,9 @@ test("recording asks about 100 versus 85 aloud, accepts a voice reply, and route
   await expect(question).toContainText("100");
   await expect(question).toContainText("85");
   await expect(question).toContainText("15");
+  await expect(
+    page.getByRole("button", { name: "Check recording again", exact: true }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Tap to hear the question" }),
   ).toBeVisible();
@@ -654,4 +657,86 @@ test("offline typed answers survive reopening an encrypted local draft", async (
   await expect(
     page.getByRole("button", { name: "Confirm and send", exact: true }),
   ).toBeDisabled();
+});
+
+test("product counts ask about scope before sending a 75 versus 80 difference for review", async ({
+  page,
+}, testInfo) => {
+  await login(page, "worker", "QA-01");
+  await send(page.context().request, "/reports", {
+    client_request_id: crypto.randomUUID(),
+    department_id: seed.departmentId,
+    shift_id: seed.shiftId,
+    occurred_at: new Date().toISOString(),
+    confirmed: true,
+    text: "75 kitchen products packed and ready for dispatch.",
+    fields: {
+      category: "progress",
+      product: "kitchen products",
+      quantity: 75,
+      unit: "items",
+      quantity_stage: "packed",
+      quantity_basis: "total",
+      dispatch_status: "pending",
+    },
+  });
+  await login(page, "worker", "QA-03");
+  await page.goto("/workspace/record");
+  await page
+    .getByRole("combobox", { name: /Speech language/ })
+    .selectOption("en-IN");
+  await expect(
+    page.getByText("Only submitted reports are compared.", { exact: false }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Your update — type or correct the transcript")
+    .fill("80 kitchen products packed and ready for dispatch.");
+  await page.getByRole("button", { name: "Check update", exact: true }).click();
+  await expect(page.locator(".conversation-question")).toContainText("75");
+  await expect(page.locator(".conversation-question")).toContainText("80");
+  await expect(page.locator(".conversation-question")).toContainText(
+    "same work and reporting period",
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("product-count-question-desktop.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await checkWorkspaceLayout(page, "product count question", 390);
+  await page.locator(".report-conversation").scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath("product-count-question-mobile.png"),
+    fullPage: false,
+  });
+  await page.getByRole("button", { name: "Type answer", exact: true }).click();
+  await page.getByLabel("Your answer", { exact: true }).fill("yes");
+  await page
+    .getByRole("button", { name: "Check my answer", exact: true })
+    .click();
+  await expect(page.locator(".conversation-summary")).toContainText("80 items");
+  await expect(page.locator(".conversation-summary")).toContainText("Packed");
+  await expect(page.locator(".conversation-summary")).not.toContainText(
+    "Manufactured",
+  );
+  await page
+    .getByLabel("I reviewed this report and any uncertainty is stated clearly.")
+    .check();
+  await page
+    .getByRole("button", { name: "Confirm and send", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/workspace\/reports\//);
+  await login(page, "supervisor");
+  const conflicts = await (
+    await page.context().request.get(`${API}/conflicts`)
+  ).json();
+  const conflict = conflicts.find(
+    (value: { title: string }) => value.title === "Possible count difference",
+  );
+  expect(conflict).toBeTruthy();
+  await page.goto(`/workspace/conflicts/${conflict.id}`);
+  await expect(
+    page.getByText("Possible count difference", { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".workspace-content")).toContainText("75");
+  await expect(page.locator(".workspace-content")).toContainText("80");
 });
