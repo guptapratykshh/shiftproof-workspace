@@ -52,4 +52,5 @@ from .reporting import (
 )
 from .platform import Notification, AuditLog, BackgroundJob
 from .followups import FollowUp
+from .conversations import DepartmentLink, ReportConversation, ConversationTurn
 from . import immutability
