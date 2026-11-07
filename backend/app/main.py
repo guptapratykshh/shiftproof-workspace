@@ -27,6 +27,7 @@ from .api import (
     tasks,
     workforce,
     workspace,
+    conversations,
 )
 
 settings = get_settings()
@@ -144,5 +145,6 @@ for router in [
     analytics.router,
     followups.router,
     workspace.router,
+    conversations.router,
 ]:
     app.include_router(router, prefix="/api/v1")
