@@ -10,6 +10,7 @@ import re
 import unicodedata
 from zoneinfo import ZoneInfo
 from ..claim_numbers import spoken_numbers
+from .count_context import product_key
 
 
 def normalized(value):
@@ -19,6 +20,8 @@ def normalized(value):
 
 
 def identifier(value, kind=""):
+    if kind == "product":
+        return product_key(value)
     value = normalized(spoken_numbers(str(value or "")))
     prefixes = {"batch": r"^(?:batch|बैच)\s*[-_:]?\s*", "order": r"^(?:order|ord|ऑर्डर)\s*[-_:]?\s*",
                 "task_reference": r"^(?:task|कार्य)\s*[-_:]?\s*",
@@ -31,6 +34,8 @@ def identifier(value, kind=""):
 UNITS = {
     "pieces": ("pieces", 1), "piece": ("pieces", 1), "pcs": ("pieces", 1),
     "units": ("pieces", 1), "unit": ("pieces", 1), "पीस": ("pieces", 1),
+    "items": ("pieces", 1), "item": ("pieces", 1), "products": ("pieces", 1),
+    "product": ("pieces", 1), "उत्पाद": ("pieces", 1), "प्रोडक्ट्स": ("pieces", 1),
     "kg": ("mass", 1000), "kgs": ("mass", 1000), "kilograms": ("mass", 1000),
     "g": ("mass", 1), "grams": ("mass", 1), "gram": ("mass", 1),
     "boxes": ("boxes", 1), "box": ("boxes", 1),
@@ -139,7 +144,7 @@ def compare(a, b, report_a, report_b, timezone="UTC", cross_department=False):
         unit_a, factor_a = UNITS.get(ua, (ua, 1))
         unit_b, factor_b = UNITS.get(ub, (ub, 1))
         qa, qb = a["quantity"] * factor_a, b["quantity"] * factor_b
-        if unit_a == unit_b and not math.isclose(qa, qb, rel_tol=0, abs_tol=1e-9):
+        if unit_a and unit_a == unit_b and not math.isclose(qa, qb, rel_tol=0, abs_tol=1e-9):
             findings.append({
                 "category": "transfer_gap" if transfer_gap else "quantity_mismatch",
                 "title": "Transfer difference" if transfer_gap else "Quantity mismatch", "severity": "high",
@@ -175,3 +180,51 @@ def summary(findings):
                       if "difference" in finding else "")
         parts.append(f"{finding['title']} ({finding['severity']}): {values}.{difference} {finding['recommended_action']}")
     return " ".join(parts) + " Both claims remain unverified; confirm the observation time and context with both workers."
+
+
+def possible_count_difference(a, b, report_a, report_b, relation=None):
+    """Ask about a shared product/task; missing identifiers are never assumed equal.
+
+    This is deliberately separate from compare(): it can only become a review
+    request via a worker conversation, and never bridges departments.
+    """
+    if report_a.department_id != report_b.department_id or relation == "different":
+        return []
+    if a.get("quantity_basis") == "additional" or b.get("quantity_basis") == "additional":
+        return []
+    if a.get("quantity") is None or b.get("quantity") is None:
+        return []
+    # Explicitly different work/time is not a potential contradiction.
+    for key in ("batch", "order", "transfer_reference", "machine", "work_area", "product",
+                "task_reference", "reference_period", "observation_time"):
+        if a.get(key) and b.get(key) and identifier(a[key], key) != identifier(b[key], key):
+            return []
+    if getattr(report_a, "task_id", None) and getattr(report_b, "task_id", None):
+        if report_a.task_id != report_b.task_id:
+            return []
+    entities = ("batch", "order", "transfer_reference", "machine", "task_reference", "product")
+    shared_task = bool(getattr(report_a, "task_id", None)
+                       and report_a.task_id == getattr(report_b, "task_id", None))
+    if not (shared_task or context_matches(a, b, entities)):
+        return []
+    ua, ub = normalized(a.get("unit")), normalized(b.get("unit"))
+    dimension_a, factor_a = UNITS.get(ua, (ua, 1))
+    dimension_b, factor_b = UNITS.get(ub, (ub, 1))
+    if not dimension_a or dimension_a != dimension_b:
+        return []
+    qa, qb = a["quantity"] * factor_a, b["quantity"] * factor_b
+    if math.isclose(qa, qb, rel_tol=0, abs_tol=1e-9):
+        return []
+    return [{
+        "category": "quantity_context", "title": "Possible count difference", "severity": "high",
+        "field": "quantity", "values": [a["quantity"], b["quantity"]],
+        "units": [a.get("unit"), b.get("unit")],
+        "difference": abs(qa - qb) / factor_a, "difference_unit": a.get("unit"),
+        "stages": [a.get("quantity_stage"), b.get("quantity_stage")],
+        "scope_relation": relation or "unchecked",
+        "recommended_action": (
+            "The worker confirmed the same work and reporting period. Verify both counts."
+            if relation == "same" else
+            "Confirm whether these counts describe the same work and reporting period before resolving the difference."
+        ),
+    }]
