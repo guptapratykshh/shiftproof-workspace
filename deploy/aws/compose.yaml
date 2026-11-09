@@ -1,0 +1,84 @@
+name: shiftproof-production
+x-app: &app
+  image: shiftproof-api:${RELEASE_ID:?set release id}
+  build: ./backend
+  env_file: .env.production
+  restart: unless-stopped
+  init: true
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: ['/tmp:size=512m,mode=1777']
+  volumes: [clamav:/var/lib/clamav:ro]
+  stop_grace_period: 120s
+  logging: &logging
+    driver: awslogs
+    options:
+      awslogs-region: ${AWS_REGION:-ap-south-1}
+      awslogs-group: ${LOG_GROUP:?set log group}
+      mode: non-blocking
+      max-buffer-size: 4m
+services:
+  migrate:
+    <<: *app
+    command: [python, -m, app.bootstrap]
+    restart: 'no'
+    mem_limit: 512m
+  api:
+    <<: *app
+    command: [uvicorn, app.main:app, --host, 0.0.0.0, --port, '8000', --workers, '2', --limit-concurrency, '64', --proxy-headers, --forwarded-allow-ips, '*', --no-access-log]
+    mem_limit: 2g
+    pids_limit: 200
+    depends_on: {migrate: {condition: service_completed_successfully}}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health',timeout=8)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+  worker:
+    <<: *app
+    command: [python, -m, app.worker]
+    mem_limit: 850m
+    pids_limit: 100
+    depends_on: {migrate: {condition: service_completed_successfully}}
+    healthcheck:
+      test: [CMD, python, -c, "import pathlib,time; assert time.time()-pathlib.Path('/tmp/shiftproof-worker-heartbeat').stat().st_mtime<300"]
+      interval: 60s
+      timeout: 5s
+      retries: 2
+      start_period: 120s
+  scanner-updates:
+    <<: *app
+    user: root
+    read_only: false
+    cap_drop: []
+    volumes: [clamav:/var/lib/clamav]
+    command: [sh, -c, 'chown clamav:clamav /var/lib/clamav; exec freshclam --daemon --foreground --stdout --checks=6 --pid=/tmp/freshclam.pid']
+    mem_limit: 1536m
+    healthcheck:
+      test: [CMD, python, -c, "import pathlib,time; assert any(time.time()-p.stat().st_mtime<604800 for p in pathlib.Path('/var/lib/clamav').glob('daily.c*'))"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 5m
+  web:
+    image: shiftproof-web:${RELEASE_ID:?set release id}
+    build: .
+    restart: unless-stopped
+    mem_limit: 128m
+    pids_limit: 50
+    ports: ['127.0.0.1:8080:8080']
+    depends_on: {api: {condition: service_healthy}}
+    logging: *logging
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8080/]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+volumes:
+  clamav:
+networks:
+  default:
+    ipam:
+      config: [{subnet: 172.28.44.0/24}]
