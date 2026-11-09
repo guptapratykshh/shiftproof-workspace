@@ -540,7 +540,7 @@ test("an edited update invalidates voice results and microphone denial leaves ty
 }) => {
   await login(page, "worker", "QA-02");
   await page.goto("/workspace/record");
-  const text = page.getByLabel("Your update — type or correct the transcript");
+  const text = page.getByLabel("Type or edit your update");
   await text.fill("I received 85 pieces for Batch B12, transfer MOVE-1.");
   await page.getByRole("button", { name: "Check update", exact: true }).click();
   await expect(page.locator(".conversation-question")).toContainText("100");
@@ -609,7 +609,7 @@ test("late processing never overwrites a worker correction", async ({
     await route.fulfill({ response, json: result });
   });
   await page.goto("/workspace/record");
-  const words = page.getByLabel("Your update — type or correct the transcript");
+  const words = page.getByLabel("Type or edit your update");
   await words.fill("I received 85 pieces for Batch B12, transfer MOVE-1.");
   await page.getByRole("button", { name: "Check update", exact: true }).click();
   await expect.poll(() => readySeen).toBe(true);
@@ -632,7 +632,7 @@ test("offline typed answers survive reopening an encrypted local draft", async (
   await login(page, "worker", "QA-02");
   await page.goto("/workspace/record");
   await page
-    .getByLabel("Your update — type or correct the transcript")
+    .getByLabel("Type or edit your update")
     .fill("I received 85 pieces for Batch B12, transfer MOVE-1.");
   await page.getByRole("button", { name: "Check update", exact: true }).click();
   await expect(page.locator(".conversation-question")).toContainText("100");
@@ -689,7 +689,7 @@ test("product counts ask about scope before sending a 75 versus 80 difference fo
     page.getByText("Only submitted reports are compared.", { exact: false }),
   ).toBeVisible();
   await page
-    .getByLabel("Your update — type or correct the transcript")
+    .getByLabel("Type or edit your update")
     .fill("80 kitchen products packed and ready for dispatch.");
   await page.getByRole("button", { name: "Check update", exact: true }).click();
   await expect(page.locator(".conversation-question")).toContainText("75");
