@@ -1,12 +1,12 @@
 # ShiftProof role requirements audit
 
-Source: **SHIFTPROOF_ DOCUMENTATION.pdf**, Section 2 (Organization Admin, v1.1), Section 3 (Supervisor, v1.0, labeled Draft — Under Review), and Section 4 (Worker, v1.0). Extracted from the complete text of those sections, corresponding to lines 421–4033 in the local PDF text extraction. The current user request includes all documented features.
+Source: **SHIFTPROOF_ DOCUMENTATION.pdf**, Section 2 (Organization Admin, v1.1), Section 3 (Supervisor, v1.0, labeled Draft: Under Review), and Section 4 (Worker, v1.0). Extracted from the complete text of those sections, corresponding to lines 421–4033 in the local PDF text extraction. The current user request includes all documented features.
 
 Every checkbox is initially unchecked. This document is a requirements inventory, **not a claim of implemented or verified functionality**. Mark an item complete only after both its applicable UI and backend behavior are implemented and verified. Section references use `S2 §3.2` for Section 2, subsection 3.2.
 
 ## Organization administration
 
-### Navigation, identity, and authentication — S2 §§1–2
+### Navigation, identity, and authentication: S2 §§1–2
 
 - [ ] Provide admin navigation: Overview, Departments & Teams, Workforce, Shifts & Scheduling, Supervisor Management, Policies & Permissions, Alerts & Escalation, Analytics & Reports, Audit History, Settings. Include organization identity/logo, current administrator, notifications, theme selection, and logout; keep organization setup accessible after onboarding.
 - [ ] Registration requires full name, official organization email, password, confirmation, organization name, and organization type; contact number is optional.
@@ -16,7 +16,7 @@ Every checkbox is initially unchecked. This document is a requirements inventory
 - [ ] Allow existing administrators to invite additional individual administrators with organization-level administrative permissions by default. Preserve individual attribution; no shared administrator credentials.
 - [ ] Audit administrator access changes and preserve historical attribution after deactivation. Prevent deactivation or removal of the last active administrator.
 
-### Resumable nine-step onboarding — S2 §3
+### Resumable nine-step onboarding: S2 §3
 
 - [ ] Present nine guided steps with saved progress, Save & Continue, and Save & Exit. Require the first five before activating operational functionality; optional customization remains available afterward. Skipping policy customization must not disable privacy or recording safeguards.
 - [ ] **Step 1, organization profile (S2 §3.2):** require name, type, valid contact email, and explicitly configured timezone; allow logo, address, and contact number. Accept common logo image formats and make organization details editable later in Settings.
@@ -33,7 +33,7 @@ Every checkbox is initially unchecked. This document is a requirements inventory
 - [ ] **Step 9, optional final review (S2 §3.10):** summarize profile, departments, teams/lines, shifts, supervisors, mapping, escalation, and privacy. Show Completed/Pending/Skipped/Requires Attention, edit-section links, activation, and save/exit.
 - [ ] Enforce activation gates independently of the optional review UI: first five steps complete, at least one active department/team/shift/designated supervisor, and a responsible critical-alert recipient. Optional configurations may remain incomplete after activation.
 
-### Organization dashboard — S2 §4
+### Organization dashboard: S2 §4
 
 - [ ] Header shows organization identity/logo, current date, date-range selector, notifications, profile, and theme controls.
 - [ ] Overview indicators show active departments, active workers, active supervisors, tasks in progress, open critical issues, and pending escalations; each includes icon and drill-down. Show equivalent-period comparisons and sparklines only with meaningful historical data; never invent percentage changes.
@@ -47,7 +47,7 @@ Every checkbox is initially unchecked. This document is a requirements inventory
 - [ ] Recent activity emphasizes significant organization changes, supervisor additions, structure changes, critical escalations, and policies. Routine operational events remain within department views.
 - [ ] All charts use actual records, clear titles/labels, appropriate legends/tooltips/date filters, underlying-record navigation, semantic colors plus non-color cues, and meaningful empty states. Avoid unnecessary duplicate charts and misleading representations of incomplete data.
 
-### Departments, teams, and workforce — S2 §§5–6
+### Departments, teams, and workforce: S2 §§5–6
 
 - [ ] Department list shows name, team/worker counts, assigned supervisors, open critical issues, active state; create/view/edit/deactivate actions and department workforce/issue comparisons.
 - [ ] Department detail includes overview, teams/lines, supervisors, workforce, operational summary, and activity history; task status/worker/severity/completion charts; team and supervisor detail links. Routine assignment/issue handling remains primarily in the supervisor experience.
@@ -57,7 +57,7 @@ Every checkbox is initially unchecked. This document is a requirements inventory
 - [ ] Never expose worker PINs or other sensitive authentication values to administrators or supervisors.
 - [ ] Administrators do **not** receive unrestricted original recording or transcript access by default. Enforce explicit privacy policy/permissions and legitimate organizational purpose; log recording/transcript access and preserve historical reports.
 
-### Supervisors, scheduling, and permissions — S2 §§7–9
+### Supervisors, scheduling, and permissions: S2 §§7–9
 
 - [ ] Supervisor directory shows name, ID, email, assigned departments, independent permission levels, primary/backup designation, and account state; invite/edit/change permissions/change responsibilities/deactivate; distribution and coverage visualizations.
 - [ ] Supervisor detail includes profile, department assignments, permissions, responsibility mapping, shift coverage, and activity history.
@@ -68,7 +68,7 @@ Every checkbox is initially unchecked. This document is a requirements inventory
 - [ ] Central policy management covers role permissions, department access, data visibility, recording safeguards, evidence access, retention, and account security. Supervisors cannot change global policy/self-grant permissions; workers cannot change administrative settings; enforce all rules server-side.
 - [ ] Administrator invitation/deactivation/access management remains individually traceable and always retains at least one active administrator.
 
-### Alerts, analytics, audit, and settings — S2 §§10–14
+### Alerts, analytics, audit, and settings: S2 §§10–14
 
 - [ ] Alert administration supports severity configuration, department responsible supervisors, primary/backup recipients, escalation rules/windows, and history. Visualize severity/department distribution, escalation trend, average acknowledgement time, and pending versus resolved issues.
 - [ ] Responsible supervisor receives initial alerts; severity/time policies govern escalation; immediate safety invokes emergency escalation. Track acknowledgement separately from resolution and record every escalation.
@@ -80,21 +80,21 @@ Every checkbox is initially unchecked. This document is a requirements inventory
 - [ ] Settings include organization identity/logo/type/contact/timezone/preferences; own profile/password/active sessions/notification preferences; administrator invitations/access/deactivation; persistent light/dark/system theme.
 - [ ] Every admin screen supports loading, useful empty/action states, errors/retry, permission errors, network failures preserving unsaved input, confirmation for consequential changes, and informative insufficient-analytics-data states.
 
-### Admin acceptance gate — S2 §15
+### Admin acceptance gate: S2 §15
 
 - [ ] Verify registration/email verification, all mandatory onboarding and save/resume, eight organization types, multiple-admin management, departments/teams without historical deletion, overnight/multiple shifts, supervisor invitations/multi-department permissions, workforce visibility, escalation, temporary takeover, privacy-controlled evidence, visual analytics/drill-down, and audit history end to end.
 - [ ] Verify historical preservation after structure changes, independent backend authorization, actual-data charts that retain actionable alerts, light/dark themes, and desktop/tablet/mobile support.
 
 ## Supervisor experience
 
-### Navigation, authentication, and first use — S3 §§1–3
+### Navigation, authentication, and first use: S3 §§1–3
 
 - [ ] Supervisor navigation includes Overview, Needs Attention, Tasks, Reports & Issues, Handovers, Team Management, Notifications, Settings; organization identity, current department/selector, shift, notifications, profile, theme, logout.
 - [ ] Supervisor accounts are administrator-invited only. Login requires email, Organization ID, password; include recovery and account activation. Load only assigned departments and their permission levels. Supervisor ID as an alternative identifier is conditional on architecture support.
 - [ ] Provide a skippable/resumable five-step first-use checklist: review departments/permissions/teams/primary-backup; review teams/workers/availability/memberships; confirm assigned shifts/responsibilities/mappings; learn incoming handovers/critical acknowledgement/transfers/history; enter dashboard with feature orientation.
 - [ ] Save supervisor onboarding progress, avoid repeating completed steps, allow experienced users to skip directly to dashboard, and never expose organization-wide configuration editing through onboarding.
 
-### Dashboard and attention queue — S3 §§4–5
+### Dashboard and attention queue: S3 §§4–5
 
 - [ ] Provide individual-department and combined authorized-department views, enforcing independent permissions even in combined view. Header includes greeting/name/date/time/current shift/department selector/notifications/profile.
 - [ ] Attention summary links to filtered critical alerts, blocked/overdue tasks, pending approvals, unresolved conflicts, and pending critical acknowledgements.
@@ -104,7 +104,7 @@ Every checkbox is initially unchecked. This document is a requirements inventory
 - [ ] Prioritize immediate safety, critical incidents, critical-task approval, high-impact conflicts, blocked tasks, overdue tasks, then other actions. Routine updates must not bury critical issues.
 - [ ] Each attention item displays title, severity/flag, department/team, responsible worker, timestamp, status, reason for attention, primary action, and detail navigation.
 
-### Tasks — S3 §6 and S4 §4
+### Tasks: S3 §6 and S4 §4
 
 - [ ] Task list shows title/ID, department/team, assignee worker/team, priority, deadline, status, verification requirement. Filters: department/team/worker/status/priority/deadline/category. Provide list and board; PDF makes calendar architecture-dependent, but master prompt explicitly requires calendar.
 - [ ] Create-task required fields: title, description, department, individual/team type, assigned worker/team, criticality, verification-required. Optional: team, deadline, priority flag, supporting attachments, instructions. Keep optional priority flag distinct from required criticality.
@@ -122,7 +122,7 @@ Every checkbox is initially unchecked. This document is a requirements inventory
 - [ ] Reporting from task detail reuses the reporting flow with task association retained; worker reviews/confirms extraction; supervisor notified when attention is required; no repeated task search.
 - [ ] Configure approaching-deadline/overdue reminder timing; notify deadline changes and updated assignments.
 
-### Reports and conflicts — S3 §§7–8
+### Reports and conflicts: S3 §§7–8
 
 - [ ] Separate Needs Review (critical, uncertain critical information, conflicts, missing essential facts, intervention) from Recent Activity (routine reports/observations/general updates). Routine reports require manual approval only when a configured rule demands it.
 - [ ] Report detail includes original transcript/audio when retained and permitted, extracted information, worker, department/team, related task/batch, timestamp, confidence/uncertainty, evidence, full history, conflicts/corrections.
@@ -131,14 +131,14 @@ Every checkbox is initially unchecked. This document is a requirements inventory
 - [ ] Conflict workflow preserves both reports, detects discrepancies, requests neutral clarification, accepts confirm/correct/context/unable-to-confirm replies, preserves clarification history, and sends significant unresolved conflicts to Needs Attention.
 - [ ] Conflict detail shows both originals/transcripts/extracted values, worker identities, timestamps/evidence, clarification conversation, and status. Supervisor may confirm a report, record correction, request information, escalate, or resolve with explanation. Neither original can be silently overwritten/deleted.
 
-### Critical alerts — S3 §9
+### Critical alerts: S3 §9
 
 - [ ] Alert detail includes severity, original report/transcript/evidence, worker, department/team, machine/batch/task, timestamp, AI context, acknowledgement status, escalation history.
 - [ ] Alert actions: acknowledge, evidence review, corrective assignment, follow-up task, escalate, update status, record resolution.
 - [ ] Preserve recommended lifecycle New → Acknowledged → Under Investigation → Action Assigned → Resolved → Verified/Closed where required. Acknowledgement never implies resolution.
 - [ ] Route first to designated supervisor, notify backup under policy, escalate for expired acknowledgement window. Explicit immediate safety invokes emergency process without AI/clarification/timeout delay; the application does not replace emergency procedures.
 
-### Workforce and team management — S3 §10
+### Workforce and team management: S3 §10
 
 - [ ] Team overview shows department/team, assigned workers, optional lead, current shift, availability/workload; visualize team distribution, workload, shift coverage, and availability.
 - [ ] Worker directory shows Employee ID/name, primary/additional departments, team, shift, account state.
@@ -149,7 +149,7 @@ Every checkbox is initially unchecked. This document is a requirements inventory
 - [ ] Absence management marks unavailable, identifies pending tasks, supports individual/bulk reassignment, prominently highlights critical work until reassigned, and preserves original assignment/reassignment history.
 - [ ] Maintain one account per worker, one primary department, optional additional departments/teams, shift-specific assignments, visible cross-department tasks, and routing to the responsible department.
 
-### Handovers — S3 §11
+### Handovers: S3 §11
 
 - [ ] Handover overview shows current/incoming shifts, outgoing/incoming supervisors, draft status, unresolved issues, pending task transfers, published handovers, acknowledgement status.
 - [ ] Compile reports, task progress, unresolved issues, alerts, pending corrective actions, evidence, and important changes into a draft.
@@ -159,7 +159,7 @@ Every checkbox is initially unchecked. This document is a requirements inventory
 - [ ] Require separate overall receipt acknowledgement and acknowledgement of each critical issue. Neither action resolves an issue or completes a task.
 - [ ] Changes after publication preserve the old snapshot, create an updated version, highlight differences, notify incoming supervisor, and retain full version/history. Never silently mutate a published handover.
 
-### Notifications, preferences, and interaction states — S3 §§12–15
+### Notifications, preferences, and interaction states: S3 §§12–15
 
 - [ ] Categorize supervisor notifications as Critical (safety/machine/serious issues/escalations), Action Required (blocked/overdue/approval/conflict/acknowledgement/evidence), Informational (routine reports/assignments/updates/handovers/team changes).
 - [ ] Deliver only for authorized departments/responsibilities; critical notifications follow escalation; link directly to records, track read/unread, deduplicate events. Reading does not acknowledge operational issues.
@@ -169,7 +169,7 @@ Every checkbox is initially unchecked. This document is a requirements inventory
 
 ## Worker experience
 
-### Navigation, identity, home — S4 §§1–3
+### Navigation, identity, home: S4 §§1–3
 
 - [ ] Provide Home, My Tasks, Report, Notifications, Profile with Report visually dominant and immediately accessible from Home. Favor minimal typing/navigation, simple language, large controls, mobile/tablet use, and Hindi/Hinglish where supported.
 - [ ] Worker login uses Organization ID, Employee ID, six-digit numeric PIN, touchscreen numeric keypad, login, recovery/help; no email requirement.
@@ -180,7 +180,7 @@ Every checkbox is initially unchecked. This document is a requirements inventory
 - [ ] Default to primary department while surfacing relevant secondary-department tasks; prioritize urgent/critical work and deadlines without displacing the dominant reporting action.
 - [ ] Implement worker task requirements in the shared task checklist above (S4 §4).
 
-### Voice/text reporting, review, and submission — S4 §§5–7
+### Voice/text reporting, review, and submission: S4 §§5–7
 
 - [ ] Reuse the same reporting workflow from Home, Report tab, and task details. Do not force selecting a task before reporting.
 - [ ] Recording screen includes large microphone, active status, duration, stop, cancel, language indicator where supported, and text alternative. Flow: tap → record → stop → process/transcribe/extract → review. Clearly indicate recording; allow cancellation before submission.
@@ -192,7 +192,7 @@ Every checkbox is initially unchecked. This document is a requirements inventory
 - [ ] Submission requires explicit worker review/confirmation, backend submission, then backend success before displaying Report Submitted. Show submission reference where available, associated task, and next action. Never show server success for only local persistence.
 - [ ] Text reporting uses the same extraction/review/confirmation flow; it remains available for noise, recording failure, inability to speak, or worker preference.
 
-### Conflict clarification, notifications, handover, profile — S4 §§8–11
+### Conflict clarification, notifications, handover, profile: S4 §§8–11
 
 - [ ] Worker conflict replies: Confirm Original Report, Correct My Report, Add Additional Context, Unable to Confirm. Questions must be neutral/non-leading; do not reveal another worker's private information unnecessarily. Preserve originals, version corrections, retain history, and route significant unresolved conflict to supervisors.
 - [ ] Task notifications cover new/reassigned work, description/deadline changes, approaching deadlines, overdue work. Supervisor notifications cover replies, clarification, completion rejection, and instructions; operational notifications cover relevant announcements/handovers/critical instructions.
@@ -200,7 +200,7 @@ Every checkbox is initially unchecked. This document is a requirements inventory
 - [ ] Worker handover view exposes relevant previous-shift instructions, transferred tasks, unresolved affecting issues, responsibility changes, safety notices, and direct task links. Exclude confidential supervisor discussions/internal notes. Task acknowledgement and handover acknowledgement remain separate.
 - [ ] Profile shows worker name, Employee ID, organization, primary/additional departments, team memberships, shift, account status. Allow own account information, permitted PIN recovery/change, and logout. Workers cannot change assigned roles or department permissions.
 
-### Offline, shared-device security, states, accessibility — S4 §§12–16
+### Offline, shared-device security, states, accessibility: S4 §§12–16
 
 - [ ] Permit local report creation/persistence with pending sync, retry on reconnection, and transition to Submitted only after backend confirmation. Expose Draft, Saved Locally, Pending Sync, Syncing, Submitted, Sync Failed distinctly.
 - [ ] Every local report has a unique identifier; sync retries are idempotent and never duplicate reports. Failed drafts remain recoverable; locally saved never looks server-submitted.
