@@ -8,7 +8,8 @@ COPY public ./public
 COPY scripts/finalize-build.mjs ./scripts/finalize-build.mjs
 ENV VITE_API_BASE_URL=/api/v1
 RUN npm run build
-FROM nginx:1.28-alpine
+FROM nginx:stable-alpine
+RUN apk upgrade --no-cache
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /site/dist /usr/share/nginx/html
 EXPOSE 8080
