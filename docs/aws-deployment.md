@@ -1,6 +1,6 @@
 # AWS deployment and recovery
 
-Deployment date: 9 November 2026. Public application: **https://13.203.164.49**.
+Deployment date: 9 November 2026. Public application: **https://shiftproof.duckdns.org**. The original **https://13.203.164.49** address remains available.
 
 ## What is running
 
@@ -8,7 +8,9 @@ The `shiftproof-live` CloudFormation stack in Mumbai (`ap-south-1`) owns an isol
 
 Host nginx terminates HTTPS and forwards to a loopback-only Docker web port. The internal API port is not published. Only TCP 80 and 443 are publicly allowed; administration uses AWS Systems Manager instead of SSH. The app stays online when the Mac sleeps or is switched off.
 
-CloudFront refused creation because this AWS account requires service verification. The alternative uses the stable AWS Elastic IP with a browser-trusted Let's Encrypt IP certificate. Certbot checks renewal twice daily and gracefully reloads nginx. IP certificates last approximately six days, making the renewal timer essential. See [Let's Encrypt's IP certificate documentation](https://letsencrypt.org/2026/03/11/shorter-certs-certbot.html).
+The user-owned Duck DNS name points to the stable AWS Elastic IP. It has its own browser-trusted Let's Encrypt certificate; HTTP redirects to HTTPS. Hosting and data remain on AWS and Atlas. No Duck DNS token is needed on the server because the Elastic IP is static. Keep the Duck DNS registration active and update its DNS record if that IP changes.
+
+CloudFront refused creation because this AWS account requires service verification. The original IP address therefore also retains a trusted Let's Encrypt IP certificate. Certbot checks both certificates twice daily and gracefully reloads nginx after renewal. IP certificates last approximately six days, making the renewal timer essential. See [Let's Encrypt's IP certificate documentation](https://letsencrypt.org/2026/03/11/shorter-certs-certbot.html) and [Certbot's webroot guidance](https://eff-certbot.readthedocs.io/en/stable/using.html#webroot).
 
 This is a modest single-host deployment, not a highly available cluster. Host replacement, maintenance or database/provider outages can interrupt service. There is no promise that the application cannot crash. Container restart policies, health checks, an unhealthy-service watchdog and EC2 system-failure recovery reduce recovery time.
 
@@ -33,6 +35,8 @@ backend/.venv/bin/python deploy/aws/release.py --profile YOUR_DEPLOYMENT_PROFILE
 ```
 
 The tool uploads a source release to the private bucket, updates the encrypted parameter and starts an SSM command. It prints a release ID and command ID; **starting the command does not mean deployment succeeded**. Its non-secret metadata is also stored in the ignored `.sites-runtime/aws-deployment.json`.
+
+The public address is retained in `/shiftproof/production/public-url`, a non-secret SSM parameter. Normal releases reuse it instead of reverting to the infrastructure stack's numeric URL. `FRONTEND_URL` uses the named address for verification, invitation and recovery links. Both the named address and the original IP are accepted application origins. Browser sessions and local drafts belong to their original origin, so sign in again on the new address and finish any local-only drafts in the old tab.
 
 Check completion using the returned identifiers:
 
@@ -59,6 +63,15 @@ docker compose --env-file "$rollback_release/.env.production" \
 ```
 
 Keep the previous environment file private. If credentials were rotated, update that release's private configuration before rolling back. A rollback must not restore a revoked credential or undo newer database records.
+
+## Set up or replace the public hostname
+
+1. Register a hostname you control and point its A record to the stack's Elastic IP. Do not set an AAAA record unless the host is configured for IPv6.
+2. Copy `deploy/aws/setup-domain.sh` to the host through S3/SSM. Run `bash setup-domain.sh HOSTNAME CONTACT_EMAIL ELASTIC_IP`. It validates DNS, obtains a separate certificate using the existing HTTP challenge directory, validates nginx, and reloads it. The original IP listener stays available. A configuration failure restores the prior domain configuration.
+3. Release with `--public-url https://HOSTNAME`. Later releases can omit that flag. The release tool refuses a hostname that points to another IP or an address containing credentials, a port, a path or a query.
+4. Check HTTPS, sign-in, authenticated API calls and `/opt/certbot/bin/certbot renew --cert-name shiftproof-domain --dry-run`. The existing renewal timer and hook cover both certificates.
+
+This setup uses standard HTTP certificate validation and does not store the DNS account password or token. DNS ownership, AWS availability and certificate renewal are separate operational dependencies.
 
 ## Operations
 
@@ -112,7 +125,7 @@ The AWS frontend is a compiled static build: no Vite hot reload and no uvicorn d
 
 ## Validation record
 
-The running release is `20261109120736`. Verification on 9 November 2026:
+The initial deployment validation below was completed for release `20261109120736` on 9 November 2026. Subsequent address and copy checks are recorded after the table.
 
 | Check | Result |
 | --- | --- |
@@ -140,6 +153,18 @@ The running release is `20261109120736`. Verification on 9 November 2026:
 | Host security updates | No pending security updates reported by the package manager |
 | Small concurrent health check | 30 of 30 requests succeeded at five concurrent requests; p95 1.33 seconds; this is not a capacity benchmark |
 | Production build | TypeScript and Vite build passed; existing chunk-size advisory remains |
+
+The named address and copy update is deployed as release `20261109122639`. Its follow-up checks passed:
+
+- Six release-address tests, including persistence, first-deploy fallback, permission failures, foreign DNS targets and invalid origins.
+- 77 backend contradiction tests, plus a direct check that punctuation in original transcript identifiers still matches correctly.
+- Five public browser checks and two workspace workflows covering report submission, supervisor verification, immediate alerts and handover receipts. The connected production build passed.
+- Live worker and supervisor sign-in on `shiftproof.duckdns.org`, secure cookies, private S3 speech playback, audio upload and real Gnani transcription. The unsent draft stayed in place without a document reload, and neither role produced a browser application error.
+- Trusted HTTPS and healthy API responses on both the hostname and original IP. The IP listener is explicitly the TLS default because IP clients may omit SNI. The named-origin request reached authentication; a foreign-origin mutation was rejected with HTTP 403.
+- The running API uses the new address for `FRONTEND_URL`, while both URLs remain allowed origins. The saved public-address parameter matches the hostname. No verification email was sent to another person for this check.
+- Certificate renewal dry run for the new hostname, active renewal timer and nginx configuration validation.
+- Live desktop landing capture, the **Take a demo** link to signup, Hindi mobile signup, direct theme switching and no signup horizontal overflow. Updated captures are in the private local AWS review gallery.
+- No literal or HTML/Unicode-escaped em dashes remain in tracked authored text. Missing values now use contextual English/Hindi labels. Original user reports, historical recordings and Git history were not rewritten.
 
 Browser retries used the same workflow assertions against the compiled frontend with `/api/v1` configured. Initial runs encountered shared-machine delays, a SQLite fixture lock, and voice tests included without their separate fixture server. The workspace runner now excludes the dedicated voice suite; its count fixture supplies explicit units and its cache allowlist includes the external theme initializer. The dedicated voice suite supports isolated MongoDB and allows network time for its job chain. That run exposed a real concurrent-write error while answering a clarification; the transaction retry and namespaced duplicate lookup fixes were verified by all six voice scenarios passing together. No stale-edit or permission assertion was removed.
 
