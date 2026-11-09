@@ -28,7 +28,7 @@ def identifier(value, kind=""):
                 "transfer_reference": r"^(?:transfer|shipment|ट्रांसफर|ट्रांसफ़र|शिपमेंट)\s*(?:id\s*)?[-_:]?\s*"}
     if kind in prefixes:
         value = re.sub(prefixes[kind], "", value)
-    return re.sub(r"[\s\-_‐‑–—]+", "", value)
+    return re.sub(r"[\s\-_‐‑–]+", "", value.replace(chr(0x2014), ""))
 
 
 UNITS = {
