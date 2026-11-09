@@ -465,7 +465,7 @@ export function ShiftsPage({ embedded = false }: { embedded?: boolean }) {
                     <Status value={shift.active ? "Active" : "Inactive"} />
                   </div>
                   <p className="shift-time">
-                    {shift.starts_at} — {shift.ends_at}
+                    {shift.starts_at} {t("to", "से")} {shift.ends_at}
                     <small>
                       {shift.ends_at < shift.starts_at &&
                         t("next day", "अगला दिन")}
@@ -679,8 +679,8 @@ export function ShiftsPage({ embedded = false }: { embedded?: boolean }) {
                       }
                     </p>
                     <small>
-                      {assignment.starts_on} —{" "}
-                      {assignment.ends_on || t("Ongoing", "जारी")}
+                      {assignment.starts_on} {t("to", "से")}{" "}
+                      {assignment.ends_on || t("Present", "अब तक")}
                     </small>
                   </div>
                   {assignment.active && (
