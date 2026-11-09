@@ -8,7 +8,7 @@ export default defineConfig({
     watch: {
       // Generating QA reports or runtime artifacts must not reload a worker's
       // in-progress form in the live development preview.
-      ignored: ["**/.sites-*/**", "**/test-results/**", "**/playwright-report/**", "**/artifacts/**", "**/backend/**"],
+      ignored: ["**/.sites-*/**", "**/test-results/**", "**/playwright-report/**", "**/artifacts/**", "**/backend/**", "**/submission-video/**"],
     },
     fs: {
       // A forwarded development server must never serve backend or runtime files.
@@ -23,6 +23,7 @@ export default defineConfig({
         "**/backups/**",
         "**/test-results/**",
         "**/playwright-report/**",
+        "**/submission-video/**",
         "**/*.{db,db-shm,db-wal,sqlite,sqlite3,dump,eml,log}",
       ],
     },
