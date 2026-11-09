@@ -83,6 +83,7 @@ def test_old_local_workers_cannot_claim_production_jobs_or_expired_leases(enviro
         identity = job.id
         assert job.status == 'aws:queued'
         assert record_dict(job)['status'] == 'queued'
+
         assert enqueue(db, 'test', 'same-request', {}).id == identity
     monkeypatch.setattr(settings, 'job_namespace', '')
     assert s.worker.claim() is None
@@ -103,3 +104,64 @@ def test_old_local_workers_cannot_claim_production_jobs_or_expired_leases(enviro
         job = db.get(BackgroundJob, identity)
         assert job.status == 'aws:queued'
         assert record_dict(job)['status'] == 'queued'
+
+
+def test_namespaced_conversation_retries_keep_one_turn(setup, monkeypatch):
+    from uuid import uuid4
+    from sqlalchemy import select
+    from conftest import expect, login
+    from test_conversations import body, create
+    from app.models import BackgroundJob
+
+    s = setup
+    monkeypatch.setattr(get_settings(), 'job_namespace', 'aws')
+    login(s.client, 'worker')
+    draft = body(s)
+    conversation = create(s, draft)
+    url = f"/api/v1/report-conversations/{conversation['id']}/turns"
+    request = {'client_turn_id': str(uuid4()), 'revision': 0, 'kind': 'update',
+               'text': draft['text'], 'draft': draft}
+    first = expect(s.client.post(url, json=request), 202)
+    repeated = expect(s.client.post(url, json=request), 202)
+    assert first['revision'] == repeated['revision'] == 1
+    assert first['state']['job_id'] == repeated['state']['job_id']
+    assert s.client.post(url, json={**request, 'text': 'A different answer'}).status_code == 409
+    assert s.client.post(url, json={**request, 'client_turn_id': str(uuid4())}).status_code == 409
+    with s.db() as db:
+        jobs = list(db.scalars(select(BackgroundJob).where(
+            BackgroundJob.dedupe_key == f"aws:dialogue-turn:{conversation['id']}:{request['client_turn_id']}")))
+        assert len(jobs) == 1
+
+
+def test_conversation_commit_retry_reauthorizes_and_preserves_stale_edit_rejection(monkeypatch):
+    from unittest.mock import Mock
+    from sqlalchemy.orm.exc import StaleDataError
+    from app.api import conversations
+
+    original, fresh, request = object(), object(), object()
+    db = SimpleNamespace(bind=SimpleNamespace(dialect=SimpleNamespace(name='mongodb')),
+                         commit=Mock(side_effect=[StaleDataError('write conflict'), None]),
+                         rollback=Mock())
+    authorize = Mock(return_value=fresh)
+    operation = Mock(side_effect=[{'revision': 1}, {'revision': 1}])
+    monkeypatch.setattr(conversations, 'current_user', authorize)
+    monkeypatch.setattr(conversations.time, 'sleep', lambda _: None)
+    assert conversations.retry_write(request, db, original, operation) == {'revision': 1}
+    assert operation.call_args_list[0].args == (original,)
+    assert operation.call_args_list[1].args == (fresh,)
+    authorize.assert_called_once_with(request, db)
+    db.rollback.assert_called_once()
+
+    # A real revision mismatch is not a transient database collision.
+    stale_edit = Mock(side_effect=HTTPException(409, 'Conversation changed'))
+    with pytest.raises(HTTPException) as failure:
+        conversations.retry_write(request, db, original, stale_edit)
+    assert failure.value.status_code == 409 and stale_edit.call_count == 1
+
+    # Losing access during a retry must stop the operation.
+    db.commit = Mock(side_effect=StaleDataError('write conflict'))
+    authorize.side_effect = HTTPException(403, 'Access revoked')
+    revoked = Mock(return_value={'revision': 1})
+    with pytest.raises(HTTPException) as failure:
+        conversations.retry_write(request, db, original, revoked)
+    assert failure.value.status_code == 403 and revoked.call_count == 1
