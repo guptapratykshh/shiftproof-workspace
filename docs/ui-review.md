@@ -1,4 +1,4 @@
-# UI review — 6 November 2026
+# UI review: 6 November 2026
 
 Changes are on `feat/ui-polish-light-default`, based on `main` at `9ea113f`. No PR was created, no branch was pushed, and `main` was not changed.
 

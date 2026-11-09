@@ -476,7 +476,7 @@ export function WorkerDetailPage() {
                           teams.data?.find((team) => team.id === m.team_id)
                             ?.name,
                       )
-                      .join(", ") || "—"}
+                      .join(", ") || t("Not assigned", "नहीं सौंपा गया")}
                   </dd>
                 </div>
                 <div>
@@ -489,7 +489,7 @@ export function WorkerDetailPage() {
                           shifts.data?.find((shift) => shift.id === m.shift_id)
                             ?.name,
                       )
-                      .join(", ") || "—"}
+                      .join(", ") || t("Not assigned", "नहीं सौंपा गया")}
                   </dd>
                 </div>
                 <div>
@@ -497,7 +497,7 @@ export function WorkerDetailPage() {
                   <dd>
                     {person.data.skills
                       ?.map((skill) => skill.name)
-                      .join(", ") || "—"}
+                      .join(", ") || t("None listed", "कोई दर्ज नहीं")}
                   </dd>
                 </div>
               </dl>
@@ -609,7 +609,7 @@ export function WorkerDetailPage() {
                     <div>
                       <Status value={item.status} />
                       <p>
-                        {formatDate(item.starts_at)} —{" "}
+                        {formatDate(item.starts_at)} {t("to", "से")}{" "}
                         {formatDate(item.ends_at)}
                       </p>
                     </div>

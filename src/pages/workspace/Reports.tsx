@@ -611,7 +611,10 @@ export function ReportDetailPage() {
                 )}
               </Panel>
               <Panel
-                title={t("AI suggestions — unverified", "AI सुझाव — अपुष्ट")}
+                title={t(
+                  "AI suggestions (not verified)",
+                  "AI सुझाव (अभी पुष्टि नहीं हुई)",
+                )}
               >
                 {version.extraction ? (
                   <>

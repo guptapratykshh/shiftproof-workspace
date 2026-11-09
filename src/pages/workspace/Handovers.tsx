@@ -491,7 +491,8 @@ export function HandoversPage() {
                     </p>
                     <small>
                       {t("Latest version", "नवीनतम संस्करण")}:{" "}
-                      {handover.latest_version || "—"}
+                      {handover.latest_version ||
+                        t("Not published", "प्रकाशित नहीं")}
                     </small>
                   </div>
                   <Status value={handover.status} />

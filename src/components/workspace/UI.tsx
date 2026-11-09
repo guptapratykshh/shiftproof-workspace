@@ -883,7 +883,9 @@ export function formatDate(
         ...(withTime ? { timeStyle: "short" as const } : {}),
         timeZone: timezone,
       }).format(new Date(value))
-    : "—";
+    : document.documentElement.lang.startsWith("hi")
+      ? "तय नहीं"
+      : "Not set";
 }
 export const options = (
   items?: { id: string; name?: string; title?: string }[],

@@ -764,10 +764,7 @@ export function ReportComposer() {
               </div>
             )}
             <label className="form-field field-wide report-text">
-              {t(
-                "Your update — type or correct the transcript",
-                "आपका अपडेट — लिखें या ट्रांसक्रिप्ट सुधारें",
-              )}
+              {t("Type or edit your update", "अपना अपडेट लिखें या सुधारें")}
               <textarea
                 disabled={recording}
                 rows={6}

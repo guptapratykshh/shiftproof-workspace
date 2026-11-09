@@ -1,6 +1,6 @@
-# Local validation — 1 November 2026
+# Local validation: 1 November 2026
 
-## MongoDB primary database — 5 November 2026
+## MongoDB primary database: 5 November 2026
 
 Work was completed in the original `shiftproof` checkout; the temporary migration worktree and branch were removed. The Mac Wi-Fi DNS was changed to Cloudflare/Google with the user's explicit approval after the router failed Atlas DNS resolution.
 
@@ -19,7 +19,7 @@ The previous quick tunnel expired and was replaced. Its current address is store
 Earlier sections below are historical validation records, including the former SQL deployment.
 
 
-## Theme interaction update — 2 November 2026
+## Theme interaction update: 2 November 2026
 
 The shared sun/moon button now switches directly between light and dark on every public and workspace screen. The appearance menu and the separate Settings appearance selector were removed. Choices persist across routes and reloads; an older saved System preference is converted once to its currently resolved light/dark appearance. Keyboard activation keeps focus on the button, with action labels in English and Hindi.
 

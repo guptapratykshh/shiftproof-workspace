@@ -1,9 +1,11 @@
 from typing import Literal
+import time
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import Field, model_validator
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
 
 from ..db import get_db
 from ..models import (
@@ -20,10 +22,28 @@ from ..models import (
 from ..schemas import Input, ReportInput
 from ..security import admin, current_user, department_ids, fail, scoped
 from ..services import conversations as service
-from ..services.common import audit, enqueue, record_dict
+from ..services.common import audit, enqueue, job_key, record_dict
 from ..services.reports import accessible_report, validate_sources
 
 router = APIRouter(tags=["Report conversations"])
+
+
+def retry_write(request, db, user, operation):
+    # Speech jobs and turns can touch the same referenced records in MongoDB.
+    # Retry the whole idempotent transaction, including fresh authorization.
+    # HTTP revision conflicts are deliberately not caught here.
+    for attempt in range(6):
+        try:
+            result = operation(user)
+            if db.bind.dialect.name == "mongodb":
+                db.commit()
+            return result
+        except StaleDataError:
+            if db.bind.dialect.name != "mongodb" or attempt == 5:
+                raise
+            db.rollback()
+            time.sleep(0.15 * 2**attempt)
+            user = current_user(request, db)
 
 
 class Draft(ReportInput):
@@ -39,8 +59,13 @@ class Create(Input):
 
 @router.post("/report-conversations", status_code=201)
 def create(
-    values: Create, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
+    values: Create, request: Request,
+    user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
+    return retry_write(request, db, user, lambda actor: create_once(values, actor, db))
+
+
+def create_once(values, user, db):
     validate_sources(db, user, values.draft)
     existing = db.scalar(
         select(ReportConversation).where(
@@ -159,13 +184,18 @@ class Turn(Input):
 def turn(
     identity: str,
     values: Turn,
+    request: Request,
     user: User = Depends(current_user),
     db: Session = Depends(get_db, scope="function"),
 ):
+    return retry_write(request, db, user, lambda actor: turn_once(identity, values, actor, db))
+
+
+def turn_once(identity, values, user, db):
     c = service.accessible(db, user, identity)
     previous = db.scalar(
         select(BackgroundJob).where(
-            BackgroundJob.dedupe_key == f"dialogue-turn:{c.id}:{values.client_turn_id}"
+            BackgroundJob.dedupe_key == job_key(f"dialogue-turn:{c.id}:{values.client_turn_id}")
         )
     )
     if previous:

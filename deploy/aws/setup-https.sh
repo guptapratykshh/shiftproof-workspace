@@ -23,7 +23,7 @@ systemctl enable --now nginx
   --ip-address "$address" --cert-name shiftproof
 cat >> /etc/nginx/conf.d/shiftproof.conf <<EOF
 server {
-    listen 443 ssl;
+    listen 443 ssl default_server;
     http2 on;
     server_name $address;
     server_tokens off;

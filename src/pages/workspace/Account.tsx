@@ -258,7 +258,7 @@ export function SettingsPage() {
                   (m) =>
                     `${departments.data?.find((d) => d.id === m.department_id)?.name || ""}${m.primary ? ` (${w("Primary")})` : m.backup ? ` (${w("Backup")})` : ""}`,
                 )
-                .join(" · ") || "—"}
+                .join(" · ") || t("Not assigned", "नहीं सौंपा गया")}
             </dd>
           </div>
           <div>
@@ -270,7 +270,7 @@ export function SettingsPage() {
                   (m) =>
                     teams.data?.find((team) => team.id === m.team_id)?.name,
                 )
-                .join(" · ") || "—"}
+                .join(" · ") || t("Not assigned", "नहीं सौंपा गया")}
             </dd>
           </div>
           <div>
@@ -279,7 +279,7 @@ export function SettingsPage() {
               {assignments.data
                 ?.filter((a) => a.active && a.user_id === session.user.id)
                 .map((a) => shifts.data?.find((s) => s.id === a.shift_id)?.name)
-                .join(" · ") || "—"}
+                .join(" · ") || t("Not assigned", "नहीं सौंपा गया")}
             </dd>
           </div>
         </dl>
@@ -481,7 +481,7 @@ export function AuditPage() {
                 `${key.replaceAll("_", " ")}: ${readable(value)}`,
             )
             .join("; ")
-        : String(value ?? "—");
+        : String(value ?? t("Not recorded", "दर्ज नहीं"));
   return (
     <>
       <PageTitle

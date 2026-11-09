@@ -1,6 +1,6 @@
-# Local operation and deployment preparation
+# Operation and deployment
 
-The app runs on the local Mac using MongoDB Atlas as its primary structured-data store. The optional public tunnel forwards the local app; it is not permanent hosting. Existing private Sites hosting is separate. These files also prepare a future Docker deployment.
+The full application is hosted on AWS at **https://shiftproof.duckdns.org**, independently of the local Mac. MongoDB Atlas remains the primary structured-data store. See [the AWS runbook](aws-deployment.md) for the deployed architecture, releases, backups, security checks and recovery. The local and generic Compose alternatives below remain available for development.
 
 ## Native local development
 
@@ -33,9 +33,9 @@ docker compose ps
 
 Set the external MongoDB `DATABASE_URL` privately in the root `.env` first. The stack contains a one-shot MongoDB schema bootstrap, the unprivileged Python API, a separate background worker, nginx serving the React build, and Mailpit. Frontend and captured email bind loopback on ports 8080 and 8025. The API port remains internal. Database access uses the configured Atlas connection; the named evidence volume stores private media. `docker compose down` stops services while retaining volumes; do not add `-v` unless deliberately deleting all local data.
 
-These compose files were parsed successfully. **The Docker daemon was unavailable in the implementation environment, so image builds, container startup and TLS issuance have not been verified here.** Native API/frontend execution is verified separately from Docker.
+The AWS-specific Compose configuration, both production images and browser-trusted TLS have been exercised on the live Linux host. The generic development/Caddy configuration below is separate from that deployed configuration.
 
-## Future HTTPS deployment
+## Alternative domain-based HTTPS deployment
 
 1. Prepare a private Linux host with Docker/Compose, a DNS name pointing to it, inbound ports 80/443 and enough disk for database/evidence/backups.
 2. Copy `deploy/production.env.example` to root `.env`; replace every placeholder and protect it with `chmod 600 .env`. Set `DATABASE_URL` to the intended dedicated MongoDB database, use a restricted database account, and allow the host in Atlas network access. URL-encode special characters in credentials. Configure your real SMTP sender and provider keys privately.

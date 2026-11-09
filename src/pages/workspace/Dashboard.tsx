@@ -168,7 +168,7 @@ function Metrics({
             <span>{t(label[0], label[1])}</span>
             <strong>
               {value === null || value === undefined
-                ? "—"
+                ? t("No data", "डेटा नहीं")
                 : `${value.toLocaleString(document.documentElement.lang)}${rate ? "%" : ""}`}
             </strong>
             {rate && value !== null && (

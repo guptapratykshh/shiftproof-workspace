@@ -38,6 +38,11 @@ def job_status(phase: str):
     return f"{namespace}:{phase}" if namespace and phase in {"queued", "processing"} else phase
 
 
+def job_key(key: str):
+    namespace = get_settings().job_namespace
+    return f"{namespace}:{key}" if namespace else key
+
+
 def json_safe(value):
     if isinstance(value, datetime):
         return value.isoformat()
@@ -109,9 +114,7 @@ def notify(
 def enqueue(
     db: Session, kind: str, key: str, payload: dict, organization_id=None, actor_id=None
 ) -> BackgroundJob:
-    namespace = get_settings().job_namespace
-    if namespace:
-        key = f"{namespace}:{key}"
+    key = job_key(key)
     existing = db.scalar(select(BackgroundJob).where(BackgroundJob.dedupe_key == key))
     if existing:
         return existing

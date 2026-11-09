@@ -9,13 +9,16 @@ from ...claim_numbers import spoken_numbers
 from ...schemas import ReportFields
 from ..gnani.client import ProviderUnavailable
 
+# Accept punctuation found in spoken identifiers without displaying it in copy.
+ID_SEPARATOR = r"[-_‐‑–" + chr(0x2014) + r"]"
+
 
 def ambiguous_entities(text):
     """Refuse to collapse explicitly different IDs into this single-claim schema."""
     normalized = spoken_numbers(unicodedata.normalize("NFKC", text).casefold())
     families = (r"(?:cnc|machine|मशीन)", r"(?:batch|बैच)", r"(?:order|ord|ऑर्डर)", r"(?:task|कार्य)")
     for family in families:
-        matches = re.findall(rf"{family}\s*[-_‐‑–—]?\s*(\d+)\b", normalized)
+        matches = re.findall(rf"{family}\s*{ID_SEPARATOR}?\s*(\d+)\b", normalized)
         if len({int(value) for value in matches}) > 1:
             return True
     return False
@@ -48,8 +51,8 @@ def grounded_identifier(value, text, key):
         return False
     def digits(number):
         return "".join(str(unicodedata.decimal(c)) for c in number)
-    candidate = re.fullmatch(rf"(?:{prefix}\s*[-_‐‑–—]?\s*)?(\d+)", value)
-    sources = re.findall(rf"{prefix}\s*[-_‐‑–—]?\s*(\d+)(?!\w)", text)
+    candidate = re.fullmatch(rf"(?:{prefix}\s*{ID_SEPARATOR}?\s*)?(\d+)", value)
+    sources = re.findall(rf"{prefix}\s*{ID_SEPARATOR}?\s*(\d+)(?!\w)", text)
     return bool(candidate and digits(candidate[1]) in {digits(source) for source in sources})
 
 

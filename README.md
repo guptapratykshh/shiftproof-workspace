@@ -1,78 +1,133 @@
 # ShiftProof
 
-ShiftProof is a local, full-stack shift-handover application with organization administrator, supervisor and worker workspaces. It preserves the supplied landing/sign-in composition and shared plum/lavender theme, and connects the operational screens to a Python API and persistent database.
+**Work changes hands. The details shouldn't.**
 
-The full app runs locally with a MongoDB Atlas database. An optional temporary public tunnel forwards the local frontend and API; it requires the Mac and local processes to stay running. The existing private Sites frontend is separate.
+ShiftProof helps manufacturing teams carry clear, traceable updates from one shift to the next. Workers can speak in Hindi, Hinglish or English, check what was understood, and send a report. Supervisors can review conflicting counts, follow up on unfinished work, and publish a handover that keeps the original evidence close.
 
-## Start the full application
+[Open the live app](https://shiftproof.duckdns.org) · [Demo walkthrough](#demo-walkthrough) · [Deployment guide](docs/aws-deployment.md) · [Voice validation](docs/voice-contradiction-dialogue.md)
 
-Requirements: Node.js 22.12+, Python 3.12+, [uv](https://docs.astral.sh/uv/), and FFmpeg/ffprobe for audio/video. Google Chrome is required by the browser tests. Use the committed npm and uv lockfiles.
+## Live deployment
+
+The frontend, Python API and background worker run on AWS in Mumbai. The app stays available when the development Mac is closed. MongoDB Atlas stores application records, and a private S3 bucket stores recordings and attachments.
+
+HTTPS renewal, health checks, service restarts and daily database backups are configured. A backup was restored into an isolated database and checked before that test database was removed. This is a single-server deployment, so releases and host maintenance can briefly interrupt access. The [AWS runbook](docs/aws-deployment.md) covers costs, releases, recovery and verification results.
+
+Sign in with an account created or invited by your organization, or use **Take a demo** to open organization signup. Account credentials are not published in this repository. Real email is queued through SMTP; a queued message does not guarantee inbox delivery.
+
+## Demo walkthrough
+
+The submission follows a simple question: manufacturing reports 100 pieces, but receiving counts only 85. What happened to the other 15?
+
+1. **Set up the workplace.** The owner adds departments, teams, shifts and supervisors, then creates worker accounts. A directional Manufacturing → Receiving link allows the two departments to compare related transfers.
+2. **Record the first update.** Worker A reports 100 manufactured pieces for batch B12 and transfer MOVE-1.
+3. **Check the next update.** Worker B says they received 85 pieces for the same transfer. Gnani Prisma transcribes the recording. ShiftProof extracts the relevant facts and checks the matching reports.
+4. **Ask about the difference.** Gnani Timbre speaks a short clarification question. The same question appears on screen. B can reply by voice, type an answer, repeat the question, or say they are unsure.
+5. **Confirm and send.** If B explains that 15 pieces remain in manufacturing, the received count stays at 85 and the explanation stays with the report. B reviews it and taps **Confirm and send**.
+6. **Verify and hand over.** A receives a clarification request, and the responsible supervisors receive a notification. A supervisor reviews the evidence and records a decision. The next shift can read or listen to the published handover and confirm receipt.
+
+The app also checks changes in a worker's own reports. For counts such as 75 and 80 packed products, it asks whether they describe the same work and reporting period before treating them as a possible mismatch. Different batches, units, additional production and partial deliveries need different interpretations.
+
+A worker's spoken answer never submits a report or resolves a conflict. Original statements remain in the history. After at most three clarification questions, the worker can review the report with any uncertainty still visible.
+
+## Three workspaces
+
+| Role | What they do |
+| --- | --- |
+| Organization owner | Set up departments, teams, shifts and policies; manage workforce access and supervisor coverage; review analytics and audit history. |
+| Supervisor | Assign and verify work, review reports and evidence, investigate alerts, resolve discrepancies and publish handovers. |
+| Worker | See assigned tasks, speak or type an update, answer clarification requests, save a draft and acknowledge incoming handovers. |
+
+The interface supports English and Hindi. A single sun or moon button switches between light and dark themes. Pages adapt to mobile, tablet and desktop screens.
+
+## Voice and everyday work
+
+- **Gnani Prisma:** speech recognition for short worker updates, with a 29-second recording limit.
+- **Gnani Timbre:** spoken clarification questions and handover playback.
+- **Structured reports:** quantities, batches, equipment, quality conditions and task status stay linked to the source transcript and human confirmation.
+- **Tasks:** individual and team assignments, list/board/calendar views, dependencies, recurring work, evidence and completion checks.
+- **Safety and follow-ups:** immediate supervisor alerts, investigations, corrective work and linked requests between departments.
+- **Handovers:** drafts, published versions, pending conditions, incoming-shift routing and separate acknowledgements for critical items.
+- **Workforce:** invitations, worker activation, import previews, qualifications, absences and assignment eligibility.
+- **Offline drafts:** encrypted drafts on the device, account isolation and idempotent synchronization when the connection returns.
+
+Provider failures are shown clearly. Workers can keep their recording or type an update when speech processing is unavailable. An incomplete check is never presented as proof that reports agree.
+
+## Evidence and human review
+
+Reports keep the original transcript, suggested fields, confirmed values and later corrections separate. Comparisons use work identifiers, reporting periods, units and counting basis. A difference between manufactured and received quantities is a transfer question to investigate, not proof that either worker is wrong.
+
+Cross-department questions share only the relevant operational facts. Full reports and recordings remain subject to role and department permissions. Acknowledging a handover confirms receipt; it does not complete a task or resolve an issue.
+
+The submission walkthrough uses sample operational data. Recorded demonstration shots and live-provider checks are documented separately, so a staged recording is not presented as a live speech test. See the [voice validation record](docs/voice-contradiction-dialogue.md) and [AWS verification results](docs/aws-deployment.md#validation-record).
+
+## Run locally
+
+Requirements: Node.js 22.12+, Python 3.12+, [uv](https://docs.astral.sh/uv/), and FFmpeg/ffprobe. Browser tests use Google Chrome. Use the committed lockfiles.
 
 ```sh
 npm ci
 cd backend
 uv sync --frozen
-# Copy .env.example to .env and configure DATABASE_URL privately.
+# If .env is absent, copy .env.example to .env and configure it privately.
 cd ..
 npm run dev:full
 ```
 
-Open **http://localhost:5173**. This command initializes MongoDB collections, validators and indexes, then starts the frontend, API on port 8000, and background worker. Stop all three with Ctrl+C. Set `DATABASE_URL` in `backend/.env` to your MongoDB replica-set/Atlas connection, selecting the `shiftproof` database. Application records are stored directly through PyMongo; SQLite is retained only for legacy imports and isolated regression tests. Do not run two full development launchers against the same ports.
+Open **http://localhost:5173**. The launcher initializes the database and starts the frontend, API on port 8000, and worker. Ctrl+C stops its child processes. Avoid running two launchers on the same ports.
 
-Create your own organization at `/signup`. Registration queues a verification link before creating the organization. With the default `MAIL_MODE=file`, the background worker writes private `.eml` messages to `backend/data/outbox/`. Open the newest message locally and follow its link; the confirmation screen identifies this local-only mode. For real inbox delivery, configure SMTP privately in `backend/.env` and restart the API and worker; see [email setup](docs/integrations.md#email). SMTP confirmation means queued for delivery, not confirmed inbox placement. No shared demo login is installed.
+Use a separate development database in `backend/.env`, with a MongoDB replica set or Atlas connection. Set a distinct `JOB_NAMESPACE`, such as `dev`, if multiple runtimes share a database. Application records use MongoDB; SQLite is retained for isolated tests and legacy imports. Do not use the production database for test fixtures.
 
-Complete the first five setup steps: organization profile/timezone, departments, teams, shifts, and an **activated** primary supervisor. Supervisor invitations use the same outbox. Worker creation provides a private activation link; the worker chooses their own six-digit PIN. PINs are never shown to managers.
+For development, `MAIL_MODE=file` writes verification and invitation messages to the private `backend/data/outbox/` directory. The worker must be running. For inbox delivery, configure SMTP as described in [email setup](docs/integrations.md#email).
 
-Database and optional provider settings belong in `backend/.env` (copy `backend/.env.example`). Frontend-only `npm run dev` intentionally reports unavailable authentication when `VITE_API_BASE_URL` is unset. `dev:full` sets it to `/api/v1` automatically.
+Register an organization, verify its email, then complete the profile, departments, teams, shifts and primary-supervisor setup. Supervisors activate their invitations. Workers use their activation link to choose a private six-digit PIN.
 
-## What is included
-
-- Screenshot-aligned landing, role selection, registration, individual login, recovery and activation; eight organization types; a one-click sun/moon icon switches between persistent dark/light themes on every page, with English/Hindi interface support.
-- Resumable organization setup, departments/teams, supervisor invitations and independent department permissions, primary/backup coverage, shift definitions/assignments, weekly coverage, policies and temporary administrative takeovers.
-- Workforce creation, email-free worker activation, CSV/XLSX validation/preview/confirmation, qualifications/expiry, absence records and corrections, assignment eligibility and PIN recovery.
-- Individual/shared-team tasks, list/board/calendar views, optional priority, mandatory critical approval, dependencies, comments/evidence, reassignment/history, templates, recurring routine allocation and completion verification.
-- Voice/text report composition, consent, encrypted local drafts, account-bound idempotent synchronization, immutable corrections, private evidence, original transcript/AI suggestion/human confirmation separation, neutral clarification and conflict decisions.
-- Immediate safety alerts, acknowledgement, investigation, corrective work, resolution and escalation; linked cross-department follow-ups retain their origin and access boundaries.
-- Draft/published/provisional handovers, immutable versions and comparisons, incoming-shift routing, overall receipt and individual critical-item acknowledgements, reminders and optional audio generation.
-- Distinct role dashboards, actual-record analytics, date/scope filters, charts/CSV export, notifications and live updates, account preferences/sessions, audit history and background-job status.
-
-[Feature coverage](docs/coverage.md) maps requirements to code and verification. The detailed inventories in `docs/requirements-roles.md` and `docs/requirements-workflows.md` are source checklists, not a claim that every individual design detail has received acceptance sign-off.
-
-## External services and limitations
-
-Gnani Prisma speech-to-text, Gnani Timbre handover audio and Gemini extraction adapters are implemented with bounded jobs, validation and explicit failure states. **Live provider calls have not been verified without credentials.** Text reporting and written handovers work independently. Configure keys privately; never put them in `VITE_` variables.
-
-PDF evidence requires a working malware scanner. Without one, PDF upload is explicitly unavailable; validated photos and audio/video remain supported. Production SMTP and optional private S3 storage also require your configuration and live checks. See [integrations](docs/integrations.md).
-
-Offline editing works within an authenticated session with its encryption key in memory. A full reload while offline requires reconnection/sign-in to unlock drafts. This protects shared devices; it does not pretend that offline authentication succeeds. Tasks remain server-authoritative. The service worker caches static assets only.
+The full launcher configures `/api/v1` automatically. A standalone connected frontend needs `VITE_API_BASE_URL=/api/v1`; without it, authentication shows that the API is unavailable. Keep provider and database credentials in backend configuration, never in `VITE_` variables or Git.
 
 ## Verification
 
 ```sh
-npm run build
+# Connected production build
+VITE_API_BASE_URL=/api/v1 npm run build
+
+# Public pages
 npm test
-npm run test:workspace
-# Also verify the production offline shell:
-SHIFTPROOF_BUILD_TEST=1 npm run test:workspace
+
+# Workspace flows, including the production offline shell
+SHIFTPROOF_BUILD_TEST=1 STORAGE_MODE=local S3_KEY_PREFIX='' npm run test:workspace
+
+# Dedicated voice conversation fixtures
+STORAGE_MODE=local S3_KEY_PREFIX='' npx playwright test --config playwright.dialogue.config.ts
+
+# Backend regression suite
 cd backend
 uv run pytest -q
 ```
 
-The public browser suite checks ten routes at 320, 390, 768, 900, 1169 and 1600px, both themes and languages, preferences, keyboard controls, validation and unavailable API states. The workspace suite starts an isolated real API/database and exercises task approval, offline sync/account isolation, role pages, critical reporting and handover receipts. Browser fixture accounts exist only in that isolated test database. Final desktop/mobile images are collected in the [review gallery](artifacts/review/index.html).
+The 9 November AWS release passed 191 backend tests. Six optional integration tests were skipped in that standard run; isolated MongoDB and live speech checks were run separately. Public-page, workspace, contradiction and dedicated voice browser checks passed, including the 100/85 workflow and the 75/80 scope question. See the [full validation record](docs/aws-deployment.md#validation-record) for retries, test boundaries and results.
 
-The [validation record](docs/validation.md) lists the completed checks and remaining external setup.
+Browser checks cover widths from 320 to 2560 CSS pixels, both themes and languages, keyboard controls, form errors and role workflows. Test accounts are created in isolated databases. MongoDB browser fixtures require a fresh `shiftproof_test_browser_<unique suffix>` database; native database tests use `shiftproof_test_<unique suffix>`. The fixtures reject other names and clean up their databases.
 
-MongoDB verification uses `DATABASE_URL` and `TEST_DATABASE_URL` pointing to the same empty `shiftproof_test_<unique suffix>` database. Fixtures refuse other names and delete that test database afterward. Without `TEST_DATABASE_URL`, regression tests use temporary SQLite databases. Never point test tools at the application database. Backup/restore verification is described in [deployment](docs/deployment.md).
+## Operations and current limits
 
-## Deployment preparation
+- The AWS app uses private S3 storage, a PDF malware scanner, secure cookies and instance-role access. Provider settings are kept in encrypted configuration.
+- Offline drafts can be edited while the authenticated session retains its encryption key. A full reload while offline requires reconnection and sign-in to unlock them. Static assets are cached; account data is not.
+- Safety alerts can be sent without waiting for AI checks. They do not replace the workplace's emergency procedure.
+- During migration, 30 available media files were copied to S3. Ten older audio records already lacked their source files. Their reports and transcripts remain, but those original recordings cannot be recreated from text.
 
-```sh
-# API + worker + frontend + captured development email, using external MongoDB
-# Set DATABASE_URL privately in the root .env for Docker Compose.
-# Requires a running Docker daemon.
-docker compose up -d --build
-```
+For a local Docker setup, see [deployment](docs/deployment.md). For the running AWS setup, use the [release and recovery guide](docs/aws-deployment.md). Review the configured credentials and rotate any that have been exposed before sharing access broadly.
 
-Open http://localhost:8080 and development mail at http://localhost:8025. The API stays internal; MongoDB uses its configured TLS connection. Production adds the HTTPS override and real mail/storage configuration; see [deployment](docs/deployment.md) before using it. Docker configuration has been checked, but a container build/run is not claimed because the Docker daemon was unavailable during this delivery.
+## Repository map
 
-Source layout: `src/pages/workspace/` contains role screens, `src/styles.css` shared tokens/components, `backend/app/api/` endpoints, `backend/app/services/` business rules, `backend/app/models/` shared schema, `backend/app/mongo.py` native persistence, `backend/migrations/` legacy SQL migrations, and `backend/app/worker.py` durable jobs. See [architecture and decisions](docs/architecture.md).
+| Path | Purpose |
+| --- | --- |
+| `src/pages/workspace/` | Owner, supervisor and worker screens |
+| `src/components/workspace/` | Shared forms, voice controls and conversation UI |
+| `src/styles.css` | Theme, layout and shared control styles |
+| `backend/app/api/` | Authentication and application endpoints |
+| `backend/app/services/` | Reports, comparisons, tasks, handovers and evidence rules |
+| `backend/app/models/` and `backend/app/mongo.py` | Schema and MongoDB persistence |
+| `backend/app/worker.py` | Background speech, email and scheduled jobs |
+| `deploy/aws/` | Infrastructure, releases, HTTPS and backup scripts |
+| `docs/` | Architecture, integration details, coverage and validation |
+
+[Architecture](docs/architecture.md) · [Integrations](docs/integrations.md) · [Feature coverage](docs/coverage.md)

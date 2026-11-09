@@ -312,7 +312,7 @@ for (const scenario of cases) {
       const fields = { ...claim.fields, product: `${scenario.id}: ${claim.fields.product || 'QA product'}` };
       if (scenario.id.startsWith('TC-')) {
         await page.goto('/workspace/record');
-        await page.getByLabel('Your update — type or correct the transcript').fill(claim.text);
+        await page.getByLabel('Type or edit your update').fill(claim.text);
         const details = page.locator('details.report-details');
         if ((await details.getAttribute('open')) === null) await details.locator('summary').click();
         for (const [field, value] of Object.entries(fields)) {
