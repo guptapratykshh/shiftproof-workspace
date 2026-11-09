@@ -30,7 +30,7 @@ from .models import (
     User,
 )
 from .security import policy_value
-from .services.common import audit, enqueue, notify
+from .services.common import audit, enqueue, notify, job_phase, job_status
 
 log = logging.getLogger("shiftproof.worker")
 
@@ -38,8 +38,8 @@ log = logging.getLogger("shiftproof.worker")
 def claim():
     with SessionLocal.begin() as db:
         eligible = or_(
-            (BackgroundJob.status == "queued") & (BackgroundJob.available_at <= now()),
-            (BackgroundJob.status == "processing") & (BackgroundJob.leased_until <= now()),
+            (BackgroundJob.status == job_status("queued")) & (BackgroundJob.available_at <= now()),
+            (BackgroundJob.status == job_status("processing")) & (BackgroundJob.leased_until <= now()),
         )
         item = db.scalar(
             select(BackgroundJob)
@@ -53,7 +53,7 @@ def claim():
             db.execute(
                 update(BackgroundJob)
                 .where(
-                    BackgroundJob.status == "processing",
+                    BackgroundJob.status == job_status("processing"),
                     BackgroundJob.leased_until <= now(),
                     BackgroundJob.attempts >= BackgroundJob.max_attempts,
                 )
@@ -65,7 +65,7 @@ def claim():
             update(BackgroundJob)
             .where(BackgroundJob.id == item.id, eligible)
             .values(
-                status="processing",
+                status=job_status("processing"),
                 lease_token=lease,
                 leased_until=now() + timedelta(minutes=3),
                 attempts=BackgroundJob.attempts + 1,
@@ -242,7 +242,7 @@ def scheduled(db):
     ):
         if expired(db, job):
             job.payload, job.result = {}, {"retention_expired": True}
-            if job.status in {"queued", "processing"}:
+            if job_phase(job.status) in {"queued", "processing"}:
                 job.status, job.error = "failed", "The original processing source is no longer retained."
     from .models import ReportConversation, ConversationTurn
     for conversation in db.scalars(select(ReportConversation)):
@@ -261,7 +261,7 @@ def execute(job_id: str, lease: str):
                 .where(
                     BackgroundJob.id == job_id,
                     BackgroundJob.lease_token == lease,
-                    BackgroundJob.status == "processing",
+                    BackgroundJob.status == job_status("processing"),
                 )
                 .with_for_update()
             )
@@ -403,7 +403,7 @@ def execute(job_id: str, lease: str):
                 if job.kind in {"conversation_transcribe", "conversation_analyze"}:
                     from .services.conversations import mark_failed
                     mark_failed(db, job, safe[:1000])
-                job.status = "failed" if job.attempts >= job.max_attempts else "queued"
+                job.status = "failed" if job.attempts >= job.max_attempts else job_status("queued")
                 job.available_at = now() + timedelta(seconds=15 * 2**job.attempts)
                 job.leased_until, job.error = None, safe[:1000]
         log.warning("job_failed id=%s error_type=%s", job_id, type(error).__name__)
@@ -425,6 +425,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     while True:
         try:
+            Path("/tmp/shiftproof-worker-heartbeat").touch(mode=0o600)
             worked = tick()
             time.sleep(0.2 if worked else 2)
         except KeyboardInterrupt:
