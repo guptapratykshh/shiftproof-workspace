@@ -1,4 +1,4 @@
-# Contradiction QA — 6 November 2026
+# Contradiction QA: 6 November 2026
 
 The supplied five Hindi/Hinglish contradiction scenarios and the different-shift control were tested, with 36 additional scenarios in `fixtures/contradiction-cases.json`. The live sweep used Google Chrome and the running Python/MongoDB application, in a separate **ShiftProof Contradiction QA Lab** organization containing only synthetic data. Existing operational records were not used as fixtures.
 
