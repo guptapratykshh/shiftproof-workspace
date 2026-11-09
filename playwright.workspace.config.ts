@@ -2,6 +2,8 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./integration",
+  // Voice fixtures run their own API on 8013 via playwright.dialogue.config.ts.
+  testIgnore: "dialogue.spec.ts",
   workers: 1,
   fullyParallel: false,
   timeout: 90_000,
