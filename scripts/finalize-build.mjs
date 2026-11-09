@@ -13,7 +13,7 @@ worker = worker
   .replace("shiftproof-shell-v1", `shiftproof-shell-${fingerprint}`)
   .replace(
     "cache.add('/')",
-    `cache.addAll(${JSON.stringify(["/", "/favicon.svg", ...assets])})`,
+    `cache.addAll(${JSON.stringify(["/", "/favicon.svg", "/theme.js", ...assets])})`,
   );
 await writeFile("dist/sw.js", worker);
 console.log(
