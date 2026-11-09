@@ -1,5 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { useCatalog } from "../../components/workspace/Workspace";
@@ -117,9 +122,9 @@ export function SupervisorOrientation() {
 
   const rawSkipped: number[] = session.user.profile.orientation_skipped
     ? String(session.user.profile.orientation_skipped)
-      .split(",")
-      .map((s) => Number(s.trim()))
-      .filter(Boolean)
+        .split(",")
+        .map((s) => Number(s.trim()))
+        .filter(Boolean)
     : [];
   const [skipped, setSkipped] = useState<number[]>(rawSkipped);
   const [completed, setCompleted] = useState<number[]>(() => {
@@ -690,7 +695,7 @@ export function SupervisorDetailPage() {
                 </div>
                 <div>
                   <dt>{w("Contact number")}</dt>
-                  <dd>{item.phone || "—"}</dd>
+                  <dd>{item.phone || t("Not provided", "नहीं दिया गया")}</dd>
                 </div>
               </dl>
               <Status
@@ -738,7 +743,8 @@ export function SupervisorDetailPage() {
                           {shifts.data?.find((s) => s.id === a.shift_id)?.name}
                         </strong>
                         <p>
-                          {a.starts_on} — {a.ends_on || t("Ongoing", "जारी")}
+                          {a.starts_on} {t("to", "से")}{" "}
+                          {a.ends_on || t("Present", "अब तक")}
                         </p>
                       </div>
                       <Status value={a.active ? "Active" : "Inactive"} />
