@@ -889,7 +889,10 @@ export function TaskDetailPage() {
                 </div>
                 <div>
                   <dt>{w("Required skills")}</dt>
-                  <dd>{item.required_skills.join(", ") || "—"}</dd>
+                  <dd>
+                    {item.required_skills.join(", ") ||
+                      t("None required", "कोई आवश्यक नहीं")}
+                  </dd>
                 </div>
                 <div>
                   <dt>{w("Assignment type")}</dt>
