@@ -332,7 +332,7 @@ test("offline report sync is server confirmed and local drafts are encrypted and
   const update =
     "Offline browser test: packing complete; inspection remains pending.";
   await page
-    .getByLabel("Your update — type or correct the transcript")
+    .getByLabel("Type or edit your update")
     .fill(update);
   await page
     .getByLabel("I reviewed this report and any uncertainty is stated clearly.")
@@ -388,7 +388,7 @@ test("offline report sync is server confirmed and local drafts are encrypted and
   });
   await page.goto("/workspace/record");
   await page
-    .getByLabel("Your update — type or correct the transcript")
+    .getByLabel("Type or edit your update")
     .fill("Private unfinished draft belonging to worker one.");
   await page.getByRole("button", { name: "Save draft", exact: true }).click();
   await expect(
@@ -491,7 +491,7 @@ test("immediate report keeps one alert and published handover has separate recei
   await login(page, "worker");
   await page.goto("/workspace/record");
   await page
-    .getByLabel("Your update — type or correct the transcript")
+    .getByLabel("Type or edit your update")
     .fill("Safety check: stop the packing line until inspection is complete.");
   await page.getByLabel("This is an immediate safety concern").check();
   await page.getByRole("button", { name: "Alert supervisor now" }).click();
