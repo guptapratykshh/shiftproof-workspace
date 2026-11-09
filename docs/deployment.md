@@ -1,6 +1,6 @@
 # Operation and deployment
 
-The full application is hosted on AWS at **https://13.203.164.49**, independently of the local Mac. MongoDB Atlas remains the primary structured-data store. See [the AWS runbook](aws-deployment.md) for the deployed architecture, releases, backups, security checks and recovery. The local and generic Compose alternatives below remain available for development.
+The full application is hosted on AWS at **https://shiftproof.duckdns.org**, independently of the local Mac. MongoDB Atlas remains the primary structured-data store. See [the AWS runbook](aws-deployment.md) for the deployed architecture, releases, backups, security checks and recovery. The local and generic Compose alternatives below remain available for development.
 
 ## Native local development
 
