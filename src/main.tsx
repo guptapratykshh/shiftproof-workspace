@@ -184,7 +184,7 @@ function RouteEffects() {
           : pathname.startsWith("/recover")
             ? t("Account recovery", "खाता रिकवरी")
             : t("Sign in", "साइन इन");
-    document.title = `ShiftProof — ${title}`;
+    document.title = `ShiftProof: ${title}`;
   }, [pathname, t]);
   return null;
 }
