@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     session_hours: int = 12
     worker_session_hours: int = 8
+    job_namespace: str = Field(default="", pattern=r"^[a-z0-9_-]{0,16}$")
     mail_mode: Literal["file", "smtp"] = "file"
     smtp_host: str = "localhost"
     smtp_port: int = 1025
@@ -22,10 +23,12 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_starttls: bool = False
     mail_from: str = "ShiftProof <noreply@shiftproof.local>"
-    storage_mode: str = "local"
+    storage_mode: Literal["local", "s3"] = "local"
     storage_directory: Path = Path("./data/evidence")
     s3_endpoint_url: str = ""
     s3_bucket: str = ""
+    s3_key_prefix: str = ""
+    aws_region: str = "ap-south-1"
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""
     gnani_api_key: str = ""
@@ -40,6 +43,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_settings(self):
+        if self.storage_mode == "s3" and not self.s3_bucket:
+            raise ValueError("S3_BUCKET is required for S3 evidence storage")
+        if self.s3_key_prefix and (
+            self.s3_key_prefix.startswith("/") or ".." in self.s3_key_prefix.split("/")
+        ):
+            raise ValueError("S3_KEY_PREFIX must be a relative object prefix")
         if self.mail_mode == "smtp" and self.smtp_user and not self.smtp_password:
             raise ValueError("SMTP_PASSWORD is required when SMTP_USER is configured")
         if self.app_env == "production":
@@ -49,6 +58,12 @@ class Settings(BaseSettings):
                 raise ValueError("Production requires MongoDB or PostgreSQL")
             if not self.frontend_url.startswith("https://"):
                 raise ValueError("Production requires an HTTPS frontend")
+            if not self.allowed_origins or any(
+                not origin.startswith("https://") or "*" in origin for origin in self.allowed_origins
+            ):
+                raise ValueError("Production requires explicit HTTPS origins")
+            if self.smtp_user and not self.smtp_starttls:
+                raise ValueError("Production SMTP credentials require STARTTLS")
         return self
 
 
