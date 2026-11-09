@@ -244,7 +244,8 @@ for (const width of [320, 390, 768, 900, 1169, 1470, 1600, 1920, 2560]) {
   test(`all pages fit ${width}px in both themes and languages`, async ({
     page,
   }) => {
-    test.setTimeout(60_000);
+    // This matrix visits 48 pages; allow it to finish on a shared development machine.
+    test.setTimeout(180_000);
     await page.setViewportSize({ width, height: 1000 });
     const routes = [
       "/",
