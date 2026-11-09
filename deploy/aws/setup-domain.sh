@@ -17,19 +17,23 @@ PY
 exec 9>/opt/shiftproof/https.lock
 flock -w 300 9
 config=/etc/nginx/conf.d/shiftproof-domain.conf
+ip_config=/etc/nginx/conf.d/shiftproof.conf
 backup=$(mktemp)
+ip_backup=$(mktemp)
 candidate=$(mktemp)
+cp "$ip_config" "$ip_backup"
 had_config=false
 if [ -f "$config" ]; then
   cp "$config" "$backup"
   had_config=true
 fi
 restore() {
+  cp "$ip_backup" "$ip_config"
   if "$had_config"; then cp "$backup" "$config"; else rm -f "$config"; fi
   nginx -t && systemctl reload nginx
 }
-trap 'restore; rm -f "$backup" "$candidate"' ERR
-trap 'rm -f "$backup" "$candidate"' EXIT
+trap 'restore; rm -f "$backup" "$ip_backup" "$candidate"' ERR
+trap 'rm -f "$backup" "$ip_backup" "$candidate"' EXIT
 mkdir -p /opt/shiftproof/acme
 chmod 711 /opt/shiftproof
 chmod 755 /opt/shiftproof/acme
@@ -70,6 +74,14 @@ server {
 }
 EOF
 install -m 644 "$candidate" "$config"
+# IP clients often omit SNI. Serve their IP certificate by default even when
+# nginx loads the alphabetically earlier domain configuration first.
+python3 - "$ip_config" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+path.write_text(path.read_text().replace('listen 443 ssl;', 'listen 443 ssl default_server;'))
+PY
 nginx -t
 systemctl reload nginx
 # The existing renewal hook reloads nginx after renewing either certificate.
