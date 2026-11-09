@@ -14,7 +14,7 @@ from ..db import get_db, new_id, now
 from ..models import BackgroundJob, FileAsset, HandoverVersion, TaskEvidence, Transcript, User
 from ..schemas import Input, ReportFields
 from ..security import admin, current_user, digest, fail, policy_value, require_department, scoped
-from ..services.common import audit, enqueue, record_dict
+from ..services.common import audit, enqueue, record_dict, job_phase, job_status as runtime_job_status
 from ..services.reports import check_sensitive_access
 from ..services.retention import expired, retained_job
 from ..services.storage import asset_available, delete_bytes, read_bytes, store_asset, validate_bytes
@@ -195,7 +195,7 @@ def validate_playback_source(db, user, job):
 
 def reserve_local_playback(job, background_tasks):
     from ..worker import execute
-    job.status, job.lease_token = "processing", new_id()
+    job.status, job.lease_token = runtime_job_status("processing"), new_id()
     job.leased_until = now() + timedelta(minutes=3)
     # A failed local repair requires an explicit retry here, so an unrelated
     # machine cannot take the repaired job and put its audio on another disk.
@@ -230,7 +230,7 @@ def recover_playback(db, user, job, background_tasks):
     if get_settings().storage_mode == "local":
         reserve_local_playback(job, background_tasks)
     else:
-        job.status, job.lease_token, job.leased_until = "queued", None, None
+        job.status, job.lease_token, job.leased_until = runtime_job_status("queued"), None, None
     audit(db, user, user.organization_id, "speech.regeneration_requested", "background_job", job.id)
 
 
@@ -330,7 +330,7 @@ def retry(
         if job.status == "succeeded":
             recover_playback(db, user, job, background_tasks)
             return record_dict(job, {"payload", "lease_token"})
-        if job.status in {"queued", "processing"}:
+        if job_phase(job.status) in {"queued", "processing"}:
             return record_dict(job, {"payload", "lease_token"})
     if job.status != "failed":
         fail(409, "Only failed processing requests can be retried.")
@@ -343,7 +343,7 @@ def retry(
             fail(409, "This conversation changed. Use the latest update.")
         conversation.status = "processing"
         conversation.state = {**conversation.state, "check_error": ""}
-    job.status, job.attempts, job.error, job.available_at = "queued", 0, "", now()
+    job.status, job.attempts, job.error, job.available_at = runtime_job_status("queued"), 0, "", now()
     if job.kind == "speak" and job.payload.get("recover_on_origin") and get_settings().storage_mode == "local":
         reserve_local_playback(job, background_tasks)
     return record_dict(job, {"payload", "lease_token"})

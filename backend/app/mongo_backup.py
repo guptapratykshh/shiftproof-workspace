@@ -1,4 +1,4 @@
-"""BSON backups for a quiesced MongoDB application; restore only to an empty database."""
+"""BSON backups using a snapshot session or quiesced app; restore only to an empty database."""
 
 import argparse
 import hashlib
@@ -9,6 +9,7 @@ import tempfile
 from pathlib import Path
 
 from bson import BSON, decode_file_iter, json_util
+from pymongo import IndexModel
 
 from .db import engine
 
@@ -20,8 +21,8 @@ def checksum(stream):
     return digest.hexdigest()
 
 
-def backup(database, destination):
-    # The caller stops API and worker together, pairing this with evidence backup.
+def backup(database, destination, session=None):
+    # Without a snapshot session the caller must stop every database writer.
     manifest = {"format": 1, "database": database.name, "collections": {}}
     with Path(destination).open("xb") as output:
         Path(destination).chmod(0o600)
@@ -32,7 +33,7 @@ def backup(database, destination):
                 collection = database[name]
                 with tempfile.TemporaryFile() as data:
                     count = 0
-                    for document in collection.find({}).sort("_id", 1):
+                    for document in collection.find({}, session=session).sort("_id", 1):
                         data.write(BSON.encode(document))
                         count += 1
                     size = data.tell()
@@ -86,11 +87,14 @@ def restore(database, source):
                     batch = []
             if batch:
                 collection.insert_many(batch)
+            indexes = []
             for index in metadata["indexes"]:
                 if index["name"] == "_id_":
                     continue
                 options = {key: value for key, value in index.items() if key not in {"v", "key", "ns"}}
-                collection.create_index(list(index["key"].items()), **options)
+                indexes.append(IndexModel(list(index["key"].items()), **options))
+            if indexes:
+                collection.create_indexes(indexes)
             with tempfile.TemporaryFile() as restored:
                 for document in collection.find({}).sort("_id", 1):
                     restored.write(BSON.encode(document))

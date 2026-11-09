@@ -20,17 +20,24 @@ def s3():
     settings = get_settings()
     return boto3.client(
         "s3",
+        region_name=settings.aws_region,
         endpoint_url=settings.s3_endpoint_url or None,
         aws_access_key_id=settings.aws_access_key_id or None,
         aws_secret_access_key=settings.aws_secret_access_key or None,
     )
 
 
+def object_key(key: str):
+    prefix = get_settings().s3_key_prefix.strip("/")
+    return f"{prefix}/{key}" if prefix else key
+
+
 def put_bytes(key: str, content: bytes, mime: str):
     settings = get_settings()
     if settings.storage_mode == "s3":
         s3().put_object(
-            Bucket=settings.s3_bucket, Key=key, Body=content, ContentType=mime, ServerSideEncryption="AES256"
+            Bucket=settings.s3_bucket, Key=object_key(key), Body=content, ContentType=mime,
+            ServerSideEncryption="AES256"
         )
     else:
         path = settings.storage_directory / key
@@ -42,7 +49,7 @@ def put_bytes(key: str, content: bytes, mime: str):
 def read_bytes(asset: FileAsset):
     settings = get_settings()
     if settings.storage_mode == "s3":
-        return s3().get_object(Bucket=settings.s3_bucket, Key=asset.storage_key)["Body"].read()
+        return s3().get_object(Bucket=settings.s3_bucket, Key=object_key(asset.storage_key))["Body"].read()
     return (settings.storage_directory / asset.storage_key).read_bytes()
 
 
@@ -51,7 +58,7 @@ def asset_available(asset: FileAsset):
     settings = get_settings()
     if settings.storage_mode == "s3":
         try:
-            metadata = s3().head_object(Bucket=settings.s3_bucket, Key=asset.storage_key)
+            metadata = s3().head_object(Bucket=settings.s3_bucket, Key=object_key(asset.storage_key))
         except ClientError as error:
             if error.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
                 return False
@@ -66,9 +73,17 @@ def asset_available(asset: FileAsset):
 def delete_bytes(asset: FileAsset):
     settings = get_settings()
     if settings.storage_mode == "s3":
-        s3().delete_object(Bucket=settings.s3_bucket, Key=asset.storage_key)
+        s3().delete_object(Bucket=settings.s3_bucket, Key=object_key(asset.storage_key))
     else:
         (settings.storage_directory / asset.storage_key).unlink(missing_ok=True)
+
+
+# Uploaded media must never open network URLs or playlist references. Apply the
+# same restrictions when converting previously stored recordings as when probing.
+MEDIA_INPUT_FLAGS = [
+    "-protocol_whitelist", "file,pipe",
+    "-format_whitelist", "matroska,webm,mov,wav,ogg,mp3,flac,aac",
+]
 
 
 def media_probe(content: bytes):
@@ -77,21 +92,14 @@ def media_probe(content: bytes):
         media.flush()
         try:
             result = subprocess.run(
-                ["ffprobe", "-v", "error", "-show_format", "-show_streams", "-of", "json", media.name],
+                ["ffprobe", "-v", "error", *MEDIA_INPUT_FLAGS,
+                 "-show_format", "-show_streams", "-of", "json", media.name],
                 capture_output=True,
                 timeout=15,
                 check=True,
             )
             return json.loads(result.stdout)
         except (subprocess.SubprocessError, FileNotFoundError, ValueError):
-            # Fallback for standard media container signatures
-            if (
-                content.startswith(b"\x1a\x45\xdf\xa3")  # WebM / Matroska
-                or (content[:4] == b"RIFF" and content[8:12] == b"WAVE")  # WAV
-                or content.startswith(b"OggS")  # OGG
-                or (len(content) > 12 and b"ftyp" in content[:32])  # MP4 / M4A
-            ):
-                return {"streams": [{"codec_type": "audio"}]}
             fail(422, "This audio or video could not be read. Try another file.")
 
 
@@ -115,7 +123,7 @@ def validate_bytes(content: bytes, declared: str, kind: str):
         from io import BytesIO
 
         try:
-            with Image.open(BytesIO(content)) as original:
+            with Image.open(BytesIO(content), formats=["PNG", "JPEG", "WEBP"]) as original:
                 if original.width * original.height > 24_000_000:
                     fail(413, "Image resolution is too large.")
                 output = BytesIO()
@@ -213,6 +221,7 @@ def wav_for_transcription(content: bytes):
                     "ffmpeg",
                     "-v",
                     "error",
+                    *MEDIA_INPUT_FLAGS,
                     "-i",
                     str(source),
                     "-vn",

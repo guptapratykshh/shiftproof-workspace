@@ -4,6 +4,7 @@ from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
 from ..models import AuditLog, BackgroundJob, Notification, User
+from ..config import get_settings
 
 SECRET_FIELDS = {
     "password_hash",
@@ -18,11 +19,23 @@ SECRET_FIELDS = {
 
 def record_dict(record, exclude: set[str] | None = None) -> dict:
     blocked = SECRET_FIELDS | (exclude or set())
-    return {
+    result = {
         column.key: getattr(record, column.key)
         for column in inspect(record).mapper.column_attrs
         if column.key not in blocked
     }
+    if isinstance(record, BackgroundJob) and "status" in result:
+        result["status"] = job_phase(result["status"])
+    return result
+
+
+def job_phase(status: str):
+    return status.rsplit(":", 1)[-1]
+
+
+def job_status(phase: str):
+    namespace = get_settings().job_namespace
+    return f"{namespace}:{phase}" if namespace and phase in {"queued", "processing"} else phase
 
 
 def json_safe(value):
@@ -96,11 +109,15 @@ def notify(
 def enqueue(
     db: Session, kind: str, key: str, payload: dict, organization_id=None, actor_id=None
 ) -> BackgroundJob:
+    namespace = get_settings().job_namespace
+    if namespace:
+        key = f"{namespace}:{key}"
     existing = db.scalar(select(BackgroundJob).where(BackgroundJob.dedupe_key == key))
     if existing:
         return existing
     job = BackgroundJob(
-        kind=kind, dedupe_key=key, payload=payload, organization_id=organization_id, actor_id=actor_id
+        kind=kind, dedupe_key=key, payload=payload, organization_id=organization_id, actor_id=actor_id,
+        status=job_status("queued"),
     )
     db.add(job)
     db.flush()

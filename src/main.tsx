@@ -20,6 +20,7 @@ import { SignUp } from "./pages/SignUp";
 import { RoleLogin } from "./pages/RoleLogin";
 import { Recovery } from "./pages/Recovery";
 import { Header } from "./components/Header";
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ErrorNotice, Loading } from "./components/workspace/UI";
 import { useSession } from "./lib/session";
@@ -240,170 +241,172 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider>
-        <BrowserRouter>
-          <RouteEffects />
-          <Suspense fallback={<Loading />}>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/signin" element={<SignIn />} />
-              <Route path="/signin/:role" element={<RoleLogin />} />
-              <Route path="/signup" element={<SignUp />} />
-              <Route path="/recover/:role" element={<Recovery />} />
-              <Route path="/verify-email" element={<Activation />} />
-              <Route path="/activate" element={<Activation />} />
-              <Route path="/workspace" element={<Workspace />}>
-                <Route index element={<DashboardPage />} />
-                <Route
-                  path="teams/:id"
-                  element={
-                    <RolePage>
-                      <TeamDetailPage />
-                    </RolePage>
-                  }
-                />
-                <Route
-                  path="supervisors/:id"
-                  element={
-                    <RolePage admin>
-                      <SupervisorDetailPage />
-                    </RolePage>
-                  }
-                />
-                <Route
-                  path="onboarding"
-                  element={
-                    <RolePage admin>
-                      <OnboardingPage />
-                    </RolePage>
-                  }
-                />
-                <Route
-                  path="attention"
-                  element={
-                    <RolePage>
-                      <AttentionPage />
-                    </RolePage>
-                  }
-                />
-                <Route
-                  path="departments/:id"
-                  element={
-                    <RolePage>
-                      <DepartmentDetailPage />
-                    </RolePage>
-                  }
-                />
-                <Route
-                  path="departments"
-                  element={
-                    <RolePage admin>
-                      <DepartmentsPage />
-                    </RolePage>
-                  }
-                />
-                <Route
-                  path="shifts"
-                  element={
-                    <RolePage>
-                      <ShiftsPage />
-                    </RolePage>
-                  }
-                />
-                <Route
-                  path="supervisors"
-                  element={
-                    <RolePage admin>
-                      <SupervisorsPage />
-                    </RolePage>
-                  }
-                />
-                <Route
-                  path="policies"
-                  element={
-                    <RolePage admin>
-                      <PoliciesPage />
-                    </RolePage>
-                  }
-                />
-                <Route
-                  path="workforce"
-                  element={
-                    <RolePage>
-                      <WorkforcePage />
-                    </RolePage>
-                  }
-                />
-                <Route
-                  path="workforce/:id"
-                  element={
-                    <RolePage>
-                      <WorkerDetailPage />
-                    </RolePage>
-                  }
-                />
-                <Route path="tasks" element={<TasksPage />} />
-                <Route path="tasks/:id" element={<TaskDetailPage />} />
-                <Route path="record" element={<ReportComposer />} />
-                <Route path="drafts" element={<DraftsPage />} />
-                <Route path="reports" element={<ReportsPage />} />
-                <Route path="reports/:id" element={<ReportDetailPage />} />
-                <Route path="alerts" element={<AlertsPage />} />
-                <Route path="alerts/:id" element={<AlertsPage />} />
-                <Route
-                  path="conflicts"
-                  element={
-                    <RolePage>
-                      <ConflictsPage />
-                    </RolePage>
-                  }
-                />
-                <Route
-                  path="conflicts/:id"
-                  element={
-                    <RolePage>
-                      <ConflictsPage />
-                    </RolePage>
-                  }
-                />
-                <Route
-                  path="follow-ups"
-                  element={
-                    <RolePage>
-                      <FollowUpsPage />
-                    </RolePage>
-                  }
-                />
-                <Route path="handovers" element={<HandoversPage />} />
-                <Route path="handovers/:id" element={<HandoversPage />} />
-                <Route
-                  path="analytics"
-                  element={
-                    <RolePage>
-                      <AnalyticsPage />
-                    </RolePage>
-                  }
-                />
-                <Route
-                  path="audit"
-                  element={
-                    <RolePage admin>
-                      <AuditPage />
-                    </RolePage>
-                  }
-                />
-                <Route path="notifications" element={<NotificationsPage />} />
-                <Route path="settings" element={<SettingsPage />} />
-                <Route
-                  path="*"
-                  element={
-                    <ErrorNotice error="This workspace page could not be found." />
-                  }
-                />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
+        <AppErrorBoundary>
+          <BrowserRouter>
+            <RouteEffects />
+            <Suspense fallback={<Loading />}>
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route path="/signin" element={<SignIn />} />
+                <Route path="/signin/:role" element={<RoleLogin />} />
+                <Route path="/signup" element={<SignUp />} />
+                <Route path="/recover/:role" element={<Recovery />} />
+                <Route path="/verify-email" element={<Activation />} />
+                <Route path="/activate" element={<Activation />} />
+                <Route path="/workspace" element={<Workspace />}>
+                  <Route index element={<DashboardPage />} />
+                  <Route
+                    path="teams/:id"
+                    element={
+                      <RolePage>
+                        <TeamDetailPage />
+                      </RolePage>
+                    }
+                  />
+                  <Route
+                    path="supervisors/:id"
+                    element={
+                      <RolePage admin>
+                        <SupervisorDetailPage />
+                      </RolePage>
+                    }
+                  />
+                  <Route
+                    path="onboarding"
+                    element={
+                      <RolePage admin>
+                        <OnboardingPage />
+                      </RolePage>
+                    }
+                  />
+                  <Route
+                    path="attention"
+                    element={
+                      <RolePage>
+                        <AttentionPage />
+                      </RolePage>
+                    }
+                  />
+                  <Route
+                    path="departments/:id"
+                    element={
+                      <RolePage>
+                        <DepartmentDetailPage />
+                      </RolePage>
+                    }
+                  />
+                  <Route
+                    path="departments"
+                    element={
+                      <RolePage admin>
+                        <DepartmentsPage />
+                      </RolePage>
+                    }
+                  />
+                  <Route
+                    path="shifts"
+                    element={
+                      <RolePage>
+                        <ShiftsPage />
+                      </RolePage>
+                    }
+                  />
+                  <Route
+                    path="supervisors"
+                    element={
+                      <RolePage admin>
+                        <SupervisorsPage />
+                      </RolePage>
+                    }
+                  />
+                  <Route
+                    path="policies"
+                    element={
+                      <RolePage admin>
+                        <PoliciesPage />
+                      </RolePage>
+                    }
+                  />
+                  <Route
+                    path="workforce"
+                    element={
+                      <RolePage>
+                        <WorkforcePage />
+                      </RolePage>
+                    }
+                  />
+                  <Route
+                    path="workforce/:id"
+                    element={
+                      <RolePage>
+                        <WorkerDetailPage />
+                      </RolePage>
+                    }
+                  />
+                  <Route path="tasks" element={<TasksPage />} />
+                  <Route path="tasks/:id" element={<TaskDetailPage />} />
+                  <Route path="record" element={<ReportComposer />} />
+                  <Route path="drafts" element={<DraftsPage />} />
+                  <Route path="reports" element={<ReportsPage />} />
+                  <Route path="reports/:id" element={<ReportDetailPage />} />
+                  <Route path="alerts" element={<AlertsPage />} />
+                  <Route path="alerts/:id" element={<AlertsPage />} />
+                  <Route
+                    path="conflicts"
+                    element={
+                      <RolePage>
+                        <ConflictsPage />
+                      </RolePage>
+                    }
+                  />
+                  <Route
+                    path="conflicts/:id"
+                    element={
+                      <RolePage>
+                        <ConflictsPage />
+                      </RolePage>
+                    }
+                  />
+                  <Route
+                    path="follow-ups"
+                    element={
+                      <RolePage>
+                        <FollowUpsPage />
+                      </RolePage>
+                    }
+                  />
+                  <Route path="handovers" element={<HandoversPage />} />
+                  <Route path="handovers/:id" element={<HandoversPage />} />
+                  <Route
+                    path="analytics"
+                    element={
+                      <RolePage>
+                        <AnalyticsPage />
+                      </RolePage>
+                    }
+                  />
+                  <Route
+                    path="audit"
+                    element={
+                      <RolePage admin>
+                        <AuditPage />
+                      </RolePage>
+                    }
+                  />
+                  <Route path="notifications" element={<NotificationsPage />} />
+                  <Route path="settings" element={<SettingsPage />} />
+                  <Route
+                    path="*"
+                    element={
+                      <ErrorNotice error="This workspace page could not be found." />
+                    }
+                  />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </AppErrorBoundary>
       </PreferencesProvider>
     </QueryClientProvider>
   </React.StrictMode>,

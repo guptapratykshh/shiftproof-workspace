@@ -27,3 +27,5 @@ coverage/
 backups/
 *.dump
 *.eml
+# Live deployment captures may contain account data; keep the local review private.
+/artifacts/review/aws/
