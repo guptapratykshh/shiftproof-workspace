@@ -4,7 +4,19 @@
 
 ShiftProof helps manufacturing teams carry clear, traceable updates from one shift to the next. Workers can speak in Hindi, Hinglish or English, check what was understood, and send a report. Supervisors can review conflicting counts, follow up on unfinished work, and publish a handover that keeps the original evidence close.
 
-[Open the live app](https://shiftproof.duckdns.org) · [Demo walkthrough](#demo-walkthrough) · [Deployment guide](docs/aws-deployment.md) · [Voice validation](docs/voice-contradiction-dialogue.md)
+[Open the live app](https://shiftproof.duckdns.org) · [Watch the demo video](https://drive.google.com/file/d/1tJgiBAAYszZ3KDY5XgPeKKYsqPqp1360/view?usp=sharing) · [Read the one-page solution pitch](https://docs.google.com/document/d/13KcINPSWWISCSteqw44z4LqL5YCJFpqyGJGQDVAl1oE/edit?tab=t.0#heading=h.3zof8nuhpyey)
+
+## Challenge submission
+
+Materials for **The Great Indian Internship Challenge**:
+
+| Submission field | Link |
+| --- | --- |
+| Project URL with the one-page solution pitch | [Solution pitch](https://docs.google.com/document/d/13KcINPSWWISCSteqw44z4LqL5YCJFpqyGJGQDVAl1oE/edit?tab=t.0#heading=h.3zof8nuhpyey) |
+| Video demo | [Watch the ShiftProof demo](https://drive.google.com/file/d/1tJgiBAAYszZ3KDY5XgPeKKYsqPqp1360/view?usp=sharing) |
+| Live application | [Open ShiftProof](https://shiftproof.duckdns.org) |
+
+[Demo walkthrough](#demo-walkthrough) · [Deployment guide](docs/aws-deployment.md) · [Voice validation](docs/voice-contradiction-dialogue.md)
 
 ## Live deployment
 
